@@ -1,0 +1,64 @@
+<!-- common headers-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="telephone=no" name="format-detection">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <!-- UC强制全屏 -->
+    <meta name="full-screen" content="yes">
+    <!-- QQ强制全屏 -->
+    <meta name="x5-fullscreen" content="true">
+    <!-- UC应用模式 -->
+    <meta name="browsermode" content="application">
+    <!-- QQ应用模式 -->
+    <meta name="x5-page-mode" content="app">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <meta name="HandheldFriendly" content="true" />
+    <meta name="MobileOptimized" content="width" />
+    <meta name="applicable-device" content="mobile">
+    <meta name='keywords' content="<%- state.keywords %>" />
+    <meta name='description' content="<%- state.description %>" />
+    <meta name="wap-font-scale" content="no">
+
+    <!--字体库-->
+    <!--<link href='//cdn.webfont.youziku.com/webfonts/nomal/104448/144/595121a7f629da0dc0f2e0ff.css' rel='stylesheet' type='text/css' />-->
+    <!--公共css-->
+    <link rel="stylesheet" href="<%- commons.css %>">
+
+    <!--本页面的css-->
+    <link rel="stylesheet" href="<%- pageCss %>">
+
+    <title><%= title %></title>
+
+    <script type="text/javascript">
+        var MY = {
+            appName: '<%= config.appName %>',
+            pageName: '<%= pageName %>' || window.location.href,
+            platform: "h5",
+            environment: '<%= config.env %>',
+            pre_url: '<%= config.root %>',
+            pre_interurl: '<%= config.interUrl %>',  
+            monitorUrl: '<%= config.monitorUrl %>',
+            frontUrl: '<%= config.frontURL %>',
+            ioPort: '<%= config.socketPorts%>'
+        }
+    </script>
+    
+</head>
+<body class="<%= state.bodyClass %>">
+    <!-- 公共页头部  -->
+
+    <!-- 公告模块 -->
+    <div id="publicNotice" data-channel="xxx"></div>
+
+    <!-- 头部 -->
+    <div class="header">
+        <a href="/webrtc" class="logo-link">
+            <p class="logo-text">哎朵朵</p>
+            <div class="logo-rotate"></div>
+        </a>
+    </div>

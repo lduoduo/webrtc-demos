@@ -1,0 +1,175 @@
+body {
+    margin: 0;
+    padding: 0;
+    background: #131313;
+}
+
+.btn {
+    /*font-size: 18px;*/
+    background: #52a052;
+    padding: 10px;
+    cursor: pointer;
+    color: #fff;
+    display: inline-block;
+    box-sizing: border-box;
+}
+
+.img {
+    width: 320px;
+    height: 240px;
+    background: lightgreen;
+}
+
+.video {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    box-sizing: border-box;
+    overflow: hidden;
+    display: flex;
+    display: -webkit-flex;
+    /*flex-direction: column;*/
+    align-content: center;
+    /*-webkit-filter: blur(4px) invert(1) opacity(0.5);*/
+}
+
+.video .video-full {
+    position: relative;
+    width: 100%;
+    transition: all 0.5s linear;
+    max-width: 640px;
+    max-width: 760px;
+    background: #131313;
+    overflow: hidden;
+}
+
+.video .video-fixed {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    width: 30vmin;
+    height: 30vmin;
+    z-index: 111;
+    overflow: hidden;
+}
+
+.video-full .item {
+    height: 100%;
+    width: auto;
+    margin-left: 50%;
+    margin-top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.video-fixed .item {
+    height: 100%;
+    width: 100%;
+}
+
+.btn-group {
+    position: fixed;
+    width: 100vw;
+    bottom: 90px;
+    left: 0;
+    padding: 5px;
+    box-sizing: border-box;
+    /* height: 50px; */
+    text-align: center;
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    z-index: 99;
+}
+
+.btn-group>.item {
+    /*float: right;*/
+}
+
+.btn-group .btn-clean {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+}
+
+.message {
+    width: 100vw;
+    /*height: 100vh;*/
+    display: flex;
+    display: -webkit-flex;
+    flex-direction: column-reverse;
+    box-sizing: border-box;
+    position: fixed;
+    bottom: 0;
+    /*align-content:flex-end;*/
+}
+
+.message .msg-list {
+    max-height: 30vh;
+    overflow: scroll;
+    /*display: flex;*/
+    /*display:-webkit-flex;*/
+    /*flex-direction: column-reverse;*/
+    z-index: 99;
+    padding: 0;
+    margin: 60px 0;
+}
+
+.message .msg-in {
+    display: block;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    outline: none;
+    /*position: fixed;*/
+    /*bottom: 0;*/
+    padding: 10px;
+    color: #fff;
+    font-size: 18px;
+    z-index: 99;
+    box-sizing: border-box;
+}
+
+.message .msg-list .item {
+    font-size: 1.1rem;
+    background: rgba(255, 255, 255, 0.3);
+    margin: 2px;
+    padding: 8px;
+    color: #fff;
+}
+
+.message .msg-list .item.right {
+    text-align: right;
+    overflow: hidden;
+}
+
+.message .btn {
+    display: block;
+    background: #52a052;
+    color: #fff;
+    text-align: center;
+    padding: 10px;
+    width: 100%;
+    left: 0;
+    cursor: pointer;
+    box-sizing: border-box;
+    z-index: 99;
+}
+
+
+/* 额外的输入设备样式 */
+
+.additional-inputs {
+    display: inline-block;
+}
+
+.additional-inputs .item {
+    display: inline-block;
+    font-size: 0.9rem;
+    background: red;
+    color: #fff;
+    padding: 3px 5px;
+    margin: 3px;
+    border-radius: 5px;
+}

@@ -1,0 +1,24 @@
+<% include ../layout/header.html %>
+
+    <div class="video J-video">
+        <div class="video-full">
+            <video class="item" id='urtc' autoplay="autoplay"></video>
+        </div>
+        <div class="video-fixed">
+            <video class="item" id='myrtc' autoplay="autoplay"></video>
+        </div>
+    </div>
+
+    <div class="btn-group J-btn-group">
+        <a class="item btn btn-clean J-clean-msg">清屏</a>
+    </div>
+    <div class="message">
+        <input type="text" id='msg' class="msg-in J-msg-in" placeholder='输入内容，键盘enter发送'>
+        <a class="btn btn-send J-send-msg">发送</a>
+        <ul class="msg-list J-msg"></ul>
+    </div>
+
+    <a class="btn" id='snapshot'>snapshot</a>
+    <img id="img" class="img">
+
+<% include ../layout/footer.html %>

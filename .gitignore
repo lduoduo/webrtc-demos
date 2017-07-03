@@ -1,0 +1,6 @@
+node_modules
+wp/node_modules
+.vscode
+public/*
+keys
+npm-debug.log
