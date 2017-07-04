@@ -137,13 +137,13 @@ io.on('connection', function (sockets) {
 });
 
 //临时改一下
-config.socketPorts = config.socketPort;
+// config.socketPorts = config.socketPort;
 
 module.exports = function () {
     // app.listen(config.socketPort);
 
-    server.listen(config.socketPorts, function () {
-        console.log('socket server https on ' + config.socketPorts + ' env: ' + config.env);
+    server.listen(config.socketPort, function () {
+        console.log('io server https on ' + config.socketPort + ' env: ' + config.env);
     });
 
     // console.log('socket http on ' + config.socketPort);

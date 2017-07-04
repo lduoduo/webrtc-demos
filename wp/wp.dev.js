@@ -17,6 +17,7 @@ const srcPath = path.resolve(__dirname, "src/app");
 // const distPath = path.resolve(__dirname, "dist");
 const distPath = path.resolve(__dirname, "../public");
 
+// 获取本地ip
 const ip = tool.getLocalIP()
 /** 服务器上的静态资源公开目录 */
 const publicPath = `//${ip}:8091/static/`;

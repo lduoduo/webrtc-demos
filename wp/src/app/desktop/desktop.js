@@ -3,6 +3,8 @@ require('../../resource/desk-capture-share.crx')
 // 引入样式文件
 import './desktop.css';
 
+let serverIp = MY.environment === 'dev' ?  window.location.hostname + ':8099' : window.location.hostname
+
 let home = {
     // 是否已下载安装插件的重试
     isReTry: false,
@@ -18,11 +20,11 @@ let home = {
         roomId = roomId[0].replace(/roomid=/gi, '');
         // let ip = '192.168.31.210';
         // let ip = '10.242.96.105';        
-        let address = `wss://${window.location.hostname}/rtcWs/?roomId=${roomId}`;
+        let address = `wss://${serverIp}/rtcWs/?roomId=${roomId}`;
         let that = this;
 
         this.rtcOut = new rtcPeer();
-        this.rtcOut.init(address);
+        this.rtcOut.init({url:address});
         this.rtcOut.on('stream', function (mediastream) {
             that.showVideo(mediastream);
         }.bind(this))
@@ -99,7 +101,8 @@ let home = {
     startRtc(stream) {
         let roomId = Date.now() + ['a', 'b', 'c', 'd'][Math.floor(Math.random() * 4)]      
 
-        let url = `wss://${window.location.hostname}/rtcWs/?roomId=${roomId}`;
+        let url = `wss://${serverIp}/rtcWs/?roomId=${roomId}`;
+        // let url = `wss://${window.location.hostname}/rtcWs/?roomId=${roomId}`;
 
         this.rtcOut = new rtcPeer();
         this.rtcOut.init({ url, stream })
@@ -172,7 +175,8 @@ let invoke = {
         if (this.checkPromise) return this.checkPromise
         this.init()
         let extensionId = this.extensionId
-        window.postMessage({ from: "client", extensionId, type: this.command.DESKTOP_AUDIO }, "*");
+        // 这里要改一下
+        window.postMessage({ from: "client", extensionId, command: this.command.DESKTOP_AUDIO }, "*");
         this.checkPromise = new Promise((resolve, reject) => {
             setTimeout(() => {
                 this.checkPromise = null

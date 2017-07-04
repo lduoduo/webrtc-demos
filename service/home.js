@@ -17,6 +17,8 @@ module.exports = {
             }
         });
 
+        this.body.addReferences('star.js');
+
         yield this.body.render();
 
     }

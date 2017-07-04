@@ -4,3 +4,4 @@ wp/node_modules
 public/*
 keys
 npm-debug.log
+.DS_Store

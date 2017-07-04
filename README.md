@@ -1,6 +1,8 @@
 ## WebRTC 实验室
 > WebRTC支持的功能探索 by duoduo, 该项目由原 [mykoa](//github.com/lduoduo/mykoa) 项目独立出来
 
+> 目前所有功能都是基于最新chrome测试，后期会兼容其他浏览器
+
 ### 目前已实现功能
 + 实时音视频 [video online demo](//ldodo.cc/webrtc/webrtc?roomid=123)
 + 实时桌面共享 [desktop share online demo](//ldodo.cc/webrtc/desktop) `需安装谷歌插件`[请点击下载](//github.com/lduoduo/my-chrome-extensions/tree/master/desk-capture-share)
@@ -21,7 +23,6 @@
 6. 启动后访问 `https://${ip}:8081/webrtc` 即可
     - 注: 非https模式下由于浏览器安全限制，将无法捕捉摄像头和麦克风
 6. 线上打包: npm run build
-
 
 ### WebRTC 知识点概要, 三大 API
 + 捕捉本地摄像头麦克风: [navigator.mediaDevices.getUserMedia](//developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia)
@@ -62,6 +63,14 @@
  *    - 设置B的描述信息, XXX.setRemoteDescription(new RTCSessionDescription(answer));
  * 7. AB链接建立完成, 开始传输实时数据
 
+## 功能导航
+
++ [音视频功能块]()
++ [屏幕共享功能块]()
++ [文件并发传输]()
++ [Blob 分块传输]()
+
+
 ## updates
 + 更新了老的代码，使用新的api
 + 新增桌面共享功能，将会单独抽出来
@@ -75,6 +84,7 @@
 + 视频处理
 + 本地录屏功能
 + ui完善
++ 多人尝试
 
 ## references
 + [google ppt](http://io13webrtc.appspot.com/#1)
