@@ -30,10 +30,12 @@
 + 建立rtc传输连接: [RTCPeerConnection](//developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection)
     - 兼容性: RTCPeerConnection || webkitRTCPeerConnection || mozRTCPeerConnection
 + 建立任意数据实时传输通道(目前只支持JSON和ArrayBuffer): [RTCDataChannel](//developer.mozilla.org/en-US/docs/Web/API/RTCDataChannel)
-+ 具体功能点文档请前往 [wp]() 目录下的源码查看readme.me
++ 具体功能点文档请前往 [wp]() 目录app下的源码查看readme.me
++ 自己封装的[rtcSDK脚本]()
+
 
 ### WebRTC 点对点连接建立流程详述
-
+[文档](http://note.youdao.com/noteshare?id=76a3b3eb45960cdd9a00255597037cfd)
 > 目前只支持2个client的p2p链接，即每个房间只支持2个人
  * 角色A: 第一个进入房间的人，处于等待状态，是p2p链接发起方
  * 角色B: 第二个进入房间的人，是配p2p链接接收方
@@ -70,7 +72,6 @@
 + [文件并发传输]()
 + [Blob 分块传输]()
 
-
 ## updates
 + 更新了老的代码，使用新的api
 + 新增桌面共享功能，将会单独抽出来
@@ -90,6 +91,8 @@
 + [google ppt](http://io13webrtc.appspot.com/#1)
 
 + [Real time communication with WebRTC](https://codelabs.developers.google.com/codelabs/webrtc-web/#3)
+
++ [desktop share](https://github.com/muaz-khan/WebRTC-Experiment/tree/master/Pluginfree-Screen-Sharing)
 
 + [通过WebRTC实现实时视频通信（一)](https://www.oschina.net/question/156697_172887)
 

@@ -17,6 +17,8 @@ var options = {
 var server = https.createServer(options, app.callback(function(e){
     console.log(e)
 }));
+
+
 const wss = new WebSocket.Server({ server });
 
 // 心跳逻辑
@@ -265,13 +267,13 @@ wss.remove = function (ws) {
 }
 
 //临时改一下
-config.socketPorts = 8099;
+// config.socketPortWS = 8099;
 
 module.exports = function () {
     // app.listen(config.socketPort);
 
-    server.listen(config.socketPorts, function () {
-        console.log('ws server https on ' + config.socketPorts + ' env: ' + config.env);
+    server.listen(config.socketPortWS, function () {
+        console.log('ws server https on ' + config.socketPortWS + ' env: ' + config.env);
     });
 
     // console.log('socket http on ' + config.socketPort);

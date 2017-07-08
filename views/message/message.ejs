@@ -1,0 +1,24 @@
+<% include ../layout/header.html %>
+
+
+<div class="rtc-main">
+    <h2 class="rtc-title">实时文字聊天<br>无记录，无漫游，断线就丢失，真正实时沟通<br></h2>
+    <div class="rtc-btn-box ">
+        <input class="input rtc-channelName J-channelName" type="text" placeholder="请输入数字房间号，相同房间可进行通信哦">
+        <a class="btn btn-white J-start">立即体验</a>
+        <div class="share-url J-share-url"></div>
+    </div>
+    <div class="rtc-media ">
+        <div class="list-box"></div>
+        <div class="rtc-btn-box">
+            <textarea class="input J-rtc-message" type="text" placeholder="输入任意内容"></textarea>
+            <div>
+                <span class="checkbox J-tip-check active">是否消息提醒</span>
+                <a class="btn btn-white J-send">发送</a>
+            </div>
+        </div>
+    </div>
+    <% include ../layout/snip.html %>
+</div>
+
+<% include ../layout/footer.html %>

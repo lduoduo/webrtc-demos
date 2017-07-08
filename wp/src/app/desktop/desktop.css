@@ -1,77 +1,12 @@
 
-.video__show {
-    min-height: calc(100vh - 50px);
-    width: 100vw;
-    overflow: hidden;
-    
-    color: #fff;
-}
 
-.video__show__title {
-    padding: 5px 0 10px;
-    line-height: 1.2;
-}
-
-.video__show__title,
-.video__show__desc {
-    color: #fff;
-    text-align: center;
-}
-
-.btn__common__box {
-    height: 50px;
-    text-align: center;
-    position: relative;
-}
-
-.btn__common__box .video__share__url {
+.rtc-btn-box .share-url {
     font-size: 20px;
 }
 
-.btn__common__box .strong {
+.rtc-btn-box .strong {
     font-size: 25px;
     margin: 0;
 }
 
-.btn__white {
-    line-height: 38px;
-    color: #29B9CC;
-    background-color: #fff;
-    border: 2px solid #fff;
-}
-.btn__white:hover {
-    color: #0e6671;
-    background-color: #cbeae9;
-}
 
-.btn {
-    border: 0 none;
-    height: 42px;
-    line-height: 42px;
-    padding: 0 24px;
-    display: inline-block;
-    font-size: 16px;
-    color: #29B9CC;
-    font-weight: 300;
-    border-radius: 32px;
-    font-weight: 400;
-    cursor: pointer;
-}
-
-
-
-
-.video__show__media {
-    text-align: center;
-    /* padding: 20px; */
-    /* width: 600px; */
-    margin: 20px;
-}
-
-.video__show__media video {
-    width: 70vw;
-    height: 50vh;
-    background: #000;
-    max-width: 800px;
-    max-height: 500px;
-}

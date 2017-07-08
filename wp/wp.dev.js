@@ -73,20 +73,63 @@ var config = {
             },
             {
                 test: /\.scss$/,
+                // use: ExtractTextPlugin.extract({
+                //     fallback: 'style-loader',
+                //     //resolve-url-loader may be chained before sass-loader if necessary
+                //     use: ['css-loader', 'less-loader']
+                // }),
+
+
+
                 // include: path.resolve(__dirname, 'src/common'),
                 // use: 'style!css!postcss?parser=postcss-scss',
                 // test: /\.(less|css)$/,
-                use: ["style-loader", "css-loader", {
-                    loader: 'postcss-loader?parser=postcss-scss',
-                    options: {
-                        plugins: function () {
-                            return [
-                                require('precss'),
-                                require('autoprefixer')
-                            ];
+                // use: ["style-loader", "css-loader", {
+                //     loader: 'postcss-loader?parser=postcss-scss',
+                //     options: {
+                //         plugins: function () {
+                //             return [
+                //                 require('precss'),
+                //                 require('autoprefixer')
+                //             ];
+                //         }
+                //     }
+                // }, "sass-loader"]
+
+                
+                use: ExtractTextPlugin.extract({
+                    use: [
+                        // "style-loader",
+                        {
+                            loader: 'css-loader',
+                            options: {
+                                // modules: true,
+                                importLoaders: 1,
+                                // localIdentName: '[local]_[hash:base64:5]',
+                                sourceMap: true,
+                            }
+                        },
+                        {
+                            loader: 'postcss-loader?parser=postcss-scss',
+                            options: {
+                                plugins: function () {
+                                    return [
+                                        require('precss'),
+                                        require('autoprefixer')
+                                    ];
+                                }
+                            }
+                        },
+                        {
+                            loader: 'sass-loader',
+                            options: {
+                                sourceMap: true,
+                            },
                         }
-                    }
-                }, "sass-loader"]
+                    ],
+                    fallback: 'style-loader'
+                })
+
             },
             {
                 test: /\.less$/,
@@ -108,7 +151,7 @@ var config = {
                 use: ["file-loader?name=font/[name].[ext]&limit=10000"]
             },
             {
-                test: /\.crx$/,
+                test: /\.(crx|mp3)$/,
                 use: ["file-loader?name=resource/[name].[ext]"]
             }
         ]

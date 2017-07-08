@@ -78,13 +78,17 @@ function* start() {
 
 	//http server
 	http.createServer(app.callback()).listen(config.serverPort, function () {
-		console.log('server http on ' + config.serverPort);
+		// console.log('server http on ' + config.serverPort);
+		console.log(`http://${config.ip}:${config.serverPort}`)
 	});
 
-	//https
-	https.createServer(options, app.callback()).listen(config.serverPorts, function () {
-		console.log('server https on ' + config.serverPorts);
-	});
+	if (config.env === 'dev') {
+		//https
+		https.createServer(options, app.callback()).listen(config.serverPorts, function () {
+			// console.log('server https on ' + config.serverPorts);
+			console.log(`https://${config.ip}:${config.serverPorts}`)
+		});
+	}
 
 	app.on('error', function (err, ctx) {
 		console.log('err:' + err.stack);

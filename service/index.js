@@ -7,7 +7,9 @@ module.exports = {
     '404':require('./404'),
     '500':require('./500'),
     home: require('./home'),
-    webrtc: require('./webrtc'),
-    desktop: require('./desktop'),
-    rtcdata: require('./rtcdata')
+    webrtc: require('./p_webrtc'),
+    desktop: require('./p_desktop'),
+    rtcdata: require('./p_rtcdata'),
+    file: require('./p_file'),
+    message: require('./p_message')
 }

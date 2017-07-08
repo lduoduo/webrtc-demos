@@ -5,3 +5,5 @@ public/*
 keys
 npm-debug.log
 .DS_Store
+*.txt
+target/

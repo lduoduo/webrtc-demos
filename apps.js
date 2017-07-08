@@ -1,6 +1,7 @@
 'use strict';
 var env = require('./config/env.js');
 
+console.log('env:' + env);
 /** start main server */
 var server = require('./app-server')();
 /** start static server(send staic files such as js/css/jpg/png) */

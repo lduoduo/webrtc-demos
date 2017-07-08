@@ -3,9 +3,9 @@ require('../../resource/desk-capture-share.crx')
 // 引入样式文件
 import './desktop.css';
 
-let serverIp = MY.environment === 'dev' ?  window.location.hostname + ':8099' : window.location.hostname
+let serverIp = MY.environment === 'dev' ? window.location.hostname + ':8099' : window.location.hostname
 
-let home = {
+window.home = {
     // 是否已下载安装插件的重试
     isReTry: false,
     // 发送出去的rtc
@@ -13,6 +13,9 @@ let home = {
     init() {
         this.initStatus()
         $('body').on('click', '.J-start', this.invoke.bind(this))
+        $('body').on('click', '.J-video', function () {
+            $('.J-video').toggleClass('full-screen');
+        })
     },
     initStatus() {
         let roomId = window.location.href.match(/roomid=(\w+)?/gi)
@@ -23,8 +26,8 @@ let home = {
         let address = `wss://${serverIp}/rtcWs/?roomId=${roomId}`;
         let that = this;
 
-        this.rtcOut = new rtcPeer();
-        this.rtcOut.init({url:address});
+        this.rtcOut = new rtcSDK();
+        this.rtcOut.init({ url: address });
         this.rtcOut.on('stream', function (mediastream) {
             that.showVideo(mediastream);
         }.bind(this))
@@ -55,21 +58,84 @@ let home = {
             this.rtcOut = null;
         }
 
-        invoke.start().then((obj) => {
+        this.getLocalDesktopStream().then((stream) => {
+            window.myLocalStream = stream;
+            that.showVideo(stream)
+            that.startRtc(stream)
+        }).catch((err) => {
+            console.error(err)
+        })
+    },
+    getLocalDesktopStream() {
+        // 根据平台检测使用不同的调用方式
+        if (/firefox/gi.test(platform.name)) {
+            return this.getFirefoxDesktop()
+        } else {
+            // 先尝试admin模式
+            return this.getChromeDesktop().then((stream) => {
+                return Promise.resolve(stream)
+            }).catch(() => {
+                return this.getChromeDesktopByExtension()
+            })
+        }
+    },
+    // 直接获取Firefox屏幕共享
+    getFirefoxDesktop() {
+        let config = {
+            audio: true,
+            video: {
+                mediaSource: 'window' || 'screen'
+            }
+        }
+        return navigator.mediaDevices.getUserMedia(config).then(function (stream) {
+            window.myLocalVideoStream = stream
+            // let vn = document.createElement('video')
+            // vn.srcObject = stream;
+            // vn.play()
+            // document.body.appendChild(vn)
+            return Promise.resolve(stream)
+        }).catch((err) => {
+            console.log(err)
+            return Promise.reject(err)
+        });
+    },
+    // 直接获取chrome屏幕共享
+    getChromeDesktop() {
+        let config = { audio: false }
+        config.video = {
+            mandatory: {
+                chromeMediaSource: 'screen',
+                maxWidth: 1920,
+                maxHeight: 1080
+            },
+            optional: [{
+                googTemporalLayeredScreencast: true
+            }]
+        }
+        return navigator.mediaDevices.getUserMedia(config).then(function (stream) {
+            return Promise.resolve(stream)
+        }).catch((err) => {
+            console.log(err)
+            return Promise.reject(err)
+        });
+    },
+    // 通过浏览器插件获取chrome屏幕共享
+    getChromeDesktopByExtension() {
+        let that = this
+        return invoke.start().then((obj) => {
             obj && console.log(obj)
             invoke.on('test', function (ms) {
                 console.log('test: ', ms)
             })
-            invoke.on('mediastream', function (ms, wss) {
-                that.showVideo(ms)
-
-                console.log('媒体流：', ms, wss)
-
-                that.startRtc(ms)
-            })
             invoke.on('stop', function (ms, wss) {
                 that.stopRTC()
                 that.toggleTip(false)
+            })
+            return new Promise((resolve, reject) => {
+                invoke.on('mediastream', function (ms, wss) {
+                    console.log('媒体流：', ms, wss)
+                    resolve(ms)
+                })
             })
         }).catch(error => {
             alert(that.isReTry)
@@ -95,16 +161,17 @@ let home = {
 
             }
             console.log(error)
+            return Promise.reject(error)
         })
     },
     // 连接rtc发送流
     startRtc(stream) {
-        let roomId = Date.now() + ['a', 'b', 'c', 'd'][Math.floor(Math.random() * 4)]      
+        let roomId = Date.now() + ['a', 'b', 'c', 'd'][Math.floor(Math.random() * 4)]
 
         let url = `wss://${serverIp}/rtcWs/?roomId=${roomId}`;
         // let url = `wss://${window.location.hostname}/rtcWs/?roomId=${roomId}`;
 
-        this.rtcOut = new rtcPeer();
+        this.rtcOut = new rtcSDK();
         this.rtcOut.init({ url, stream })
 
         url = window.location.origin + window.location.pathname + '?roomid=' + roomId;
@@ -176,7 +243,7 @@ let invoke = {
         this.init()
         let extensionId = this.extensionId
         // 这里要改一下
-        window.postMessage({ from: "client", extensionId, command: this.command.DESKTOP_AUDIO }, "*");
+        window.postMessage({ from: "client", extensionId, type: this.command.DESKTOP_AUDIO }, "*");
         this.checkPromise = new Promise((resolve, reject) => {
             setTimeout(() => {
                 this.checkPromise = null
@@ -190,7 +257,7 @@ let invoke = {
     getStream(data) {
         let that = this
         let url = data.wss
-        this.rtcIn = new rtcPeer();
+        this.rtcIn = new rtcSDK();
 
         this.rtcIn.init({ url });
         this.rtcIn.on('stream', function (mediastream) {

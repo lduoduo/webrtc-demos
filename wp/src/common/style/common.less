@@ -96,11 +96,11 @@ ul {
 
 .header {
     width: 100%;
-    height: 62px;
-    text-align: left;
-    padding: 10px 20px;
-    font-size: 30px;
-    z-index: 111;
+    /* height: 62px; */
+    /* text-align: left; */
+    padding: 20px 30px;
+    font-size: 2rem;
+    /* z-index: 111; */
     position: absolute;
     box-sizing: border-box;
 }
@@ -149,8 +149,8 @@ ul {
 }
 
 .rtc-component .item {
-    width: 200px;
-    height: 200px;
+    width: 150px;
+    height: 150px;
     display: inline-block;
     background: #fff;
     background: rgba(255, 255, 255, 0.3);
@@ -159,8 +159,8 @@ ul {
     text-align: center;
     /* display: flex; */
     box-sizing: border-box;
-    padding: 80px 0;
-    font-size: 1.5rem;
+    padding: 60px 0;
+    font-size: 1.2rem;
     margin: 0 10px;
     cursor: pointer;
 }
@@ -170,8 +170,162 @@ ul {
     color: #bd6262;
 }
 
-.video__show .video__show__title{
-    margin-top: 10%;
+// 业务页面主样式
+.rtc-main {
+    min-height: calc(100vh - 50px);
+    width: 100vw;
+    overflow: hidden;
+    color: #fff;
+    .rtc-title,
+    .rtc-desc {
+        color: #fff;
+        text-align: center;
+    }
+    .rtc-title {
+        margin-top: 10vh;
+        padding: 5px 0 10px;
+        line-height: 1.2;
+    }
+    // 按钮盒子
+    .rtc-btn-box {
+        // height: 50px;
+        text-align: center;
+        position: relative;
+        .input {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid #CDDC39;
+            color: #fff;
+        }
+    }
+    .rtc-media {
+        text-align: center;
+        /* padding: 20px; */
+        /* width: 600px; */
+        margin: 20px;
+        video {
+            width: 70vw;
+            height: 50vh;
+            background: #000;
+            max-width: 800px;
+            max-height: 500px;
+            cursor: pointer;
+        }
+    }
+}
+
+// 按钮风格
+.btn {
+    border: 0 none;
+    height: 42px;
+    line-height: 42px;
+    padding: 0 24px;
+    display: inline-block;
+    font-size: 16px;
+    color: #29B9CC;
+    font-weight: 300;
+    border-radius: 32px;
+    font-weight: 400;
+    cursor: pointer;
+    &.rtc-file {
+        /*width: 150px;*/
+        height: 38px;
+        outline: none;
+        background: #fff;
+        cursor: pointer;
+    }
+    &.btn-white {
+        line-height: 38px;
+        color: #29B9CC;
+        background-color: #fff;
+        border: 2px solid #fff;
+    }
+    &.btn-white:hover {
+        color: #0e6671;
+        background-color: #cbeae9;
+    }
+}
+
+// 输入框风格
+.input {
+    box-sizing: border-box;
+    padding: 5px;
+    font: 16px Helvetica, Arial, Tahoma, '微软雅黑';
+    width: 300px;
+    height: 38px;
+    outline: none;
+    background: #fff;
+    padding: 6px 10px;
+    display: inline-block;
+}
+
+// 列表盒子样式
+.list-box {
+    width: 600px;
+    min-height: 300px;
+    max-height: 450px;
+    transition: all 0.5s linear;
+    display: inline-block;
+    background: rgba(97, 111, 154, 0.3);
+    margin-bottom: 10px;
+    /* border-radius: 15px; */
+    box-shadow: inset 2px 2px 35px #6c8db3;
+    overflow: auto;
+    padding: 20px;
+    box-sizing: border-box;
+    .item {
+        font-size: 1.5rem;
+        background: rgba(108, 164, 179, 0.4);
+
+        transition: all 0.3s linear;
+        box-sizing: border-box;
+        /* width: 90%; */
+        margin: 2px auto;
+        /* background-size: 0; */
+        height: 60px;
+        position: relative;
+        padding: 5px 10px;
+        text-align: left;
+        display: block;
+        color: #efefef;
+        p {
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .desc {
+            font-size: 1.1rem;
+        }
+        .tip {
+            height: 100%;
+            width: 73%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: #9e9e9e;
+            transition: width 0.3s linear;
+            z-index: -1;
+            filter: blur(1px);
+        }
+        &.item-in {
+            cursor: pointer;
+            .tip {
+                background: #4CAF50;
+            }
+        }
+    }
+}
+
+// 全屏设置
+.full-screen {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    position: fixed;
+    z-index: 111;
+    left: 0;
+    top: 0;
 }
 
 @media screen and (min-width:640px) and (max-width:768px) {

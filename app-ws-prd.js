@@ -8,12 +8,11 @@ const WebSocket = require('ws');
 
 var config = require('./config');
 //临时改一下
-// config.socketPortws = 8099;
 
 //https
 // var server = https.createServer(options, app.callback());
 // var server = https.createServer(app.callback());
-const wss = new WebSocket.Server({ port: config.socketPorts });
+const wss = new WebSocket.Server({ port: config.socketPortWS });
 
 // 心跳逻辑
 function heartbeat() {
@@ -264,7 +263,7 @@ wss.remove = function(ws) {
 
 module.exports = function() {
     
-    console.log('ws server https on ' + config.socketPorts + ' env: ' + config.env);
+    console.log('ws server http on ' + config.socketPortWS + ' env: ' + config.env);
 
 }
 

@@ -91,7 +91,7 @@ body {
         }
         .mask {
             position: absolute;
-            z-index: 11;
+            z-index: 0;
             top: 0;
             right: 0;
             overflow: hidden;
@@ -108,8 +108,8 @@ body {
             background-image: url('@{imgs}/1.jpg');
             background-position: center top;
             background-size: cover;
-            // -webkit-clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, 3vh 0, 3vh 47vh, 32vh 47vh, 32vh 3vh, 3vh 3vh);
-            clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, 3vh 0, 3vh 37vh, 57vh 37vh, 57vh 3vh, 3vh 3vh);
+            -webkit-clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, 3vh 0, 8vh 37vh, 57vh 37vh, 57vh 3vh, 3vh 3vh);
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, 3vh 0, 8vh 37vh, 57vh 37vh, 57vh 3vh, 3vh 3vh);
         }
         .detail {
             position: absolute;
@@ -147,6 +147,7 @@ body {
             }
             .mask {
                 background-image: url('@{imgs}/2.jpg');
+                -webkit-clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, 13vh 0, 3vh 37vh, 48vh 37vh, 60vh 3vh, 3vh 3vh);
                 clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, 13vh 0, 3vh 37vh, 48vh 37vh, 60vh 3vh, 3vh 3vh);
             }
         }
@@ -157,6 +158,7 @@ body {
             }
             .mask {
                 background-image: url('@{imgs}/3.jpg');
+                -webkit-clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, 13vh 0, 0vh 40vh, 46vh 35vh, 63vh 0vh, 3vh 3vh);
                 clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, 13vh 0, 0vh 40vh, 46vh 35vh, 63vh 0vh, 3vh 3vh);
             }
         }

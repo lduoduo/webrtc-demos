@@ -17,7 +17,7 @@ const srcPath = path.resolve(__dirname, "src/app");
 // const distPath = path.resolve(__dirname, "dist");
 const distPath = path.resolve(__dirname, "../public");
 /** 服务器上的静态资源公开目录 */
-const publicPath = '//ldodo.cc/static/';
+const publicPath = '/static/';
 /** 生成脚本样式之后的文件存放的路径前缀 */
 const preStatic = 'page';
 
@@ -67,14 +67,50 @@ var config = {
                     use: 'css-loader?importLoaders=1',
                 }),
             },
+            // {
+            //     test: /\.(sass|scss)$/,
+            //     // use: ["style-loader", "css-loader", 'sass-loader']
+            //     use: ExtractTextPlugin.extract({
+            //         fallback: 'style-loader',
+            //         //resolve-url-loader may be chained before sass-loader if necessary
+            //         use: ['css-loader', 'sass-loader']
+            //     })
+            // },
             {
                 test: /\.(sass|scss)$/,
-                // use: ["style-loader", "css-loader", 'sass-loader']
                 use: ExtractTextPlugin.extract({
-                    fallback: 'style-loader',
-                    //resolve-url-loader may be chained before sass-loader if necessary
-                    use: ['css-loader', 'sass-loader']
+                    use: [
+                        // "style-loader",
+                        {
+                            loader: 'css-loader',
+                            options: {
+                                // modules: true,
+                                importLoaders: 1,
+                                // localIdentName: '[local]_[hash:base64:5]',
+                                sourceMap: true,
+                            }
+                        },
+                        {
+                            loader: 'postcss-loader?parser=postcss-scss',
+                            options: {
+                                plugins: function () {
+                                    return [
+                                        require('precss'),
+                                        require('autoprefixer')
+                                    ];
+                                }
+                            }
+                        },
+                        {
+                            loader: 'sass-loader',
+                            options: {
+                                sourceMap: true,
+                            },
+                        }
+                    ],
+                    fallback: 'style-loader'
                 })
+
             },
             {
                 test: /\.less$/,
@@ -96,7 +132,7 @@ var config = {
                 use: ["file-loader?name=font/[name].[ext]&limit=10000"]
             },
             {
-                test: /\.crx$/,
+                test: /\.(crx|mp3)$/,
                 use: ["file-loader?name=resource/[name].[ext]"]
             }
         ]

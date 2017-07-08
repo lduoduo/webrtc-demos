@@ -9,7 +9,8 @@
     "copy": "cd wp && node copy.js",
     "start": "node apps.js",
     "dev": "cd wp && npm run dev",
-    "build": "npm run clean && cd wp && npm run build"
+    "build": "npm run clean && cd wp && npm run build",
+    "tag": "node archiver.js"
   },
   "repository": {
     "type": "git",
@@ -35,6 +36,7 @@
     "koa-sslify": "^1.1.0",
     "koa-static": "^2.0.0",
     "request": "^2.79.0",
+    "socket.io": "^2.0.3",
     "url": "^0.11.0",
     "ws": "^3.0.0"
   }

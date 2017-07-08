@@ -43,12 +43,15 @@ module.exports = function () {
 
         app.listen(staticPort);
 
-        //https
-        https.createServer(options, app.callback()).listen(config.staticPorts, function () {
-            console.log('static https on ' + config.staticPorts);
-        });
-
         console.log('static on ' + staticPort);
+
+        if (config.env === 'dev') {
+            //https
+            https.createServer(options, app.callback()).listen(config.staticPorts, function () {
+                console.log('static https on ' + config.staticPorts);
+            });
+        }
+
     }
 
 }

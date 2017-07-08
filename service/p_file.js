@@ -7,17 +7,17 @@ var config = require('../config');
 module.exports = {
     index: function* (next) {
 
-        this.body = new view('home', this);
+        this.body = new view('file', this);
 
-        this.body.page('home', {
-            title: 'im duoduo',
+        this.body.page('file', {
+            title: '文件实时传输',
             state: {
                 keywords: config.keywords,
                 description: config.description
             }
         });
 
-        this.body.addReferences('star.js');
+        this.body.addReferences('rtcSDK.js');
 
         yield this.body.render();
 
