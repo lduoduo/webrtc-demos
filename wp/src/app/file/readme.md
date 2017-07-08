@@ -1,6 +1,7 @@
 ## 多文件并发传输
 > 主要用到了WebRTC三大API中的 `RTCDataChannel`
 
+### 浏览器支持: Chrome / Filefox
 ### RTCDataChannel
 数据通道，顾名思义，就是p2p之间传输任意数据的通道，需要手动开启，方法如下
 ```

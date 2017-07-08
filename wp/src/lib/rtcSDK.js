@@ -162,7 +162,7 @@
             },
             initSignal(address) {
                 let that = this;
-                this.ws = address;
+                // this.ws = address;
                 var ws = this.ws = new WebSocket(address);
 
                 ws.onopen = function () {

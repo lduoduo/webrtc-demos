@@ -4,6 +4,7 @@
 + 为什么要依赖插件？
     - 后面会解释
 
+### 浏览器支持: Chrome / Filefox
 ### 屏幕捕捉
 
 目前WebRTC三大API中的 `getUserMedia` 允许网页中的js脚本直接捕捉摄像头、麦克风，代码如下
