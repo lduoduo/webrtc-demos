@@ -1,5 +1,5 @@
 ## WebRTC 实验室
-> WebRTC支持的功能探索 by duoduo, 该项目由原 [mykoa](//github.com/lduoduo/mykoa) 项目独立出来
+> WebRTC支持的功能探索 by duoduo, 该项目由原 [mykoa](//github.com/lduoduo/mykoa/tree/webRTC) 项目独立出来
 
 > 目前所有功能都是基于最新chrome测试，后期会兼容其他浏览器
 
@@ -13,7 +13,7 @@
 
 ### 项目目录结构和涉及知识点
 + koa(不多说)
-+ webpack打包，由原项目 [my-wp2](//github.com/lduoduo/my-wp2) 改进过来使用
++ webpack打包，由原项目 [my-wp2](//github.com/lduoduo/my-wp2/tree/webrtc) 改进过来使用
 + websockt server端搭建(不再依赖socket.io)
 
 ### 启动项目
