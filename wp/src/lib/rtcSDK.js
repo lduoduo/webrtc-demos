@@ -3,17 +3,19 @@
  * 注：API目前还在完善中，尚未完成!
  * 功能：通过rtc帮助传输媒体流和data数据
  * 调用方式：
- * 1. 新建实例 var rtc = new rtcPeer()
+ * 1. 新建实例 var rtc = new rtcSDK()
  * 2. 初始化，可以传入媒体流或者data数据，可选
  *      rtc.init({
  *          url: 信令服务器地址，必填
  *          mediastream: 媒体流，可选
  *          data: 自定义data数据，可选
  *      }).then(supportedListeners=>{
+ *          // 回调返回的supportedListeners是目前SDK支持的事件注册名
  *          console.log('支持的事件注册列表:',supportedListeners)
  *      })
  *    初始化成功之后，会有属性标志位:inited:true
- * 3. 添加回调监听函数
+ * 3. 注册回调监听函数
+ *      // 监听远程媒体流
  *      rtc.on('stream', function (mediastream) {
  *          console.log(mediastream)
  *      }.bind(this))
