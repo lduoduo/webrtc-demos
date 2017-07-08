@@ -3,6 +3,8 @@
 
 > 目前所有功能都是基于最新chrome测试，后期会兼容其他浏览器
 
+[线上demo](https://ldodo.cc/webrtc)
+
 ### 目前已实现功能
 + 实时音视频 [video online demo](//ldodo.cc/webrtc/webrtc?roomid=123)
 + 实时桌面共享 [desktop share online demo](//ldodo.cc/webrtc/desktop) `需安装谷歌插件`[请点击下载](//github.com/lduoduo/my-chrome-extensions/tree/master/desk-capture-share)
@@ -30,8 +32,8 @@
 + 建立rtc传输连接: [RTCPeerConnection](//developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection)
     - 兼容性: RTCPeerConnection || webkitRTCPeerConnection || mozRTCPeerConnection
 + 建立任意数据实时传输通道(目前只支持JSON和ArrayBuffer): [RTCDataChannel](//developer.mozilla.org/en-US/docs/Web/API/RTCDataChannel)
-+ 具体功能点文档请前往 [wp]() 目录app下的源码查看readme.me
-+ 自己封装的[rtcSDK脚本]()
++ 具体功能点文档请前往 [wp](//github.com/lduoduo/webrtc-demos/tree/master/wp) 目录app下的源码查看readme.me
++ 自己封装的[rtcSDK脚本](//github.com/lduoduo/webrtc-demos/blob/master/wp/src/lib/rtcSDK.js)
 
 
 ### WebRTC 点对点连接建立流程详述
@@ -67,10 +69,11 @@
 
 ## 功能导航
 
-+ [音视频功能块]()
-+ [屏幕共享功能块]()
-+ [文件并发传输]()
-+ [Blob 分块传输]()
++ [音视频功能块](//github.com/lduoduo/webrtc-demos/tree/master/wp/src/app/webrtc)
++ [屏幕共享功能块](//github.com/lduoduo/webrtc-demos/tree/master/wp/src/app/desktop)
++ [文件并发传输](//github.com/lduoduo/webrtc-demos/tree/master/wp/src/app/file)
++ [即时文字聊天](//github.com/lduoduo/webrtc-demos/tree/master/wp/src/app/message)
++ [Blob 分块传输]
 
 ## updates
 + 更新了老的代码，使用新的api
