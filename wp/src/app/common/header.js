@@ -53,9 +53,12 @@ window.onerror = function (errorMessage, source, lineno, colno, error) {
     // ajax.postp(monitorUrl, ERROR, null, function(e){
     //     alert(e.stack);
     // });
-    console.error(JSON.stringify(info));
+    // console.error(JSON.stringify(info));
     // ajax.post('/data/updateLog', ERROR);
-
+    Mt.alert({
+        msg: JSON.stringify(info),
+        confirmBtnMsg: '好哒'
+    })
 }
 // var a = b+1;
 window.bigpipe = function (id, content) {

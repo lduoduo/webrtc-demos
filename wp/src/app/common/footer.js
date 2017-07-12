@@ -18,7 +18,7 @@ window.Mt = {
     alert: function(option) {
         //type, title, msg, btnMsg, cb, isLoading
         swal({
-            title: option.title,
+            title: option.title || '',
             text: option.msg,
             type: option.type,
             showConfirmButton: !!option.confirmBtnMsg,

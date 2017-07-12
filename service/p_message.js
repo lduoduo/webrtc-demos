@@ -17,7 +17,7 @@ module.exports = {
             }
         });
 
-        this.body.addReferences('rtcSDK.js');
+        // this.body.addReferences('rtcSDK.js');
         this.body.addReferences('minAlert.js');
         this.body.addReferences('minAlert.css');
         this.body.addReferences('notification.js');

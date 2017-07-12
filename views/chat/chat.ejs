@@ -1,0 +1,24 @@
+<% include ../layout/header.html %>
+
+<div class="rtc-main">
+
+    <h2 class="rtc-title">面对面<br>零距离接触<br></h2>
+    <div class="rtc-btn-box ">
+        <input class="input rtc-channelName J-channelName" type="text" placeholder="请输入数字房间号，相同房间可进行通信哦">
+        <a class="btn btn-white J-start">立即体验</a>
+        <p>
+            <a class="btn btn-white J-startMedia">开启音视频</a>
+            <a class="btn btn-white J-switchCamera hide">切换摄像头</a>
+            <a class="btn btn-white J-enableAudio hide">播放本地音频(默认不开)</a>
+        </p>
+    </div>
+    <div class="rtc-media ">
+        <div class="rtc-video">
+            <video class="video local J-local-video"></video>
+            <video class="video remote J-remote-video"></video>
+        </div>
+    </div>
+    <% include ../layout/snip.html %>
+</div>
+
+<% include ../layout/footer.html %>

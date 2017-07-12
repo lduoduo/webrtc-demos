@@ -17,7 +17,7 @@ module.exports = {
             }
         });
 
-        this.body.addReferences('rtcSDK.js');
+        // this.body.addReferences('rtcSDK.js');
 
         yield this.body.render();
 

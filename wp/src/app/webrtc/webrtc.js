@@ -364,7 +364,7 @@ var rtc = {
                 tmpStream.audio = null
             }
             tmpStream.audio = new MediaStream([audioTrack])
-            tmpStream.audio = new GainController(tmpStream.audio)
+            tmpStream.audio = new webAudio(tmpStream.audio)
 
             audioTrack = tmpStream.audio.outputStream.getAudioTracks()[0]
 
@@ -413,7 +413,7 @@ var rtc = {
                 tmpStream.audio = null
             }
             tmpStream.audio = new MediaStream([audioTrack])
-            // tmpStream.audio = new GainController(tmpStream.audio)
+            // tmpStream.audio = new webAudio(tmpStream.audio)
 
             // audioTrack = tmpStream.audio.outputStream.getAudioTracks()[0]
 
@@ -474,7 +474,7 @@ var rtc = {
                 tmpStream.audio = null
             }
             tmpStream.audio = new MediaStream([audioTrack])
-            tmpStream.audio = new GainController(tmpStream.audio)
+            tmpStream.audio = new webAudio(tmpStream.audio)
 
             audioTrack = tmpStream.audio.outputStream.getAudioTracks()[0]
 

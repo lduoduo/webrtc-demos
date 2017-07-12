@@ -11,5 +11,6 @@ module.exports = {
     desktop: require('./p_desktop'),
     rtcdata: require('./p_rtcdata'),
     file: require('./p_file'),
-    message: require('./p_message')
+    message: require('./p_message'),
+    chat: require('./p_chat')
 }

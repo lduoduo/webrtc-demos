@@ -7,17 +7,17 @@ var config = require('../config');
 module.exports = {
     index: function* (next) {
 
-        this.body = new view('file', this);
+        this.body = new view('chat', this);
 
-        this.body.page('file', {
-            title: '文件实时传输',
+        this.body.page('chat', {
+            title: '实时音视频',
             state: {
                 keywords: config.keywords,
                 description: config.description
             }
         });
 
-        // this.body.addReferences('rtcSDK.js');
+        this.body.addReferences('webAudio.js');
 
         yield this.body.render();
 

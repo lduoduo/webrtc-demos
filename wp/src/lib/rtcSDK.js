@@ -40,23 +40,21 @@
  *      - rtc.updateData(data) // 传递自定义数据，目前没有任何限制(已废弃，不推荐使用)
  */
 
-/******************************以下是兼容性的polify************************************ */
+/******************************polify START************************************ */
 (function () {
+    var prefix;
+    var version;
 
-    // 1. 获取音视频
-    navigator.getUserMedia = navigator.getUserMedia ||
+    // 1. getUserMedia
+    var getUserMedia = navigator.getUserMedia = navigator.getUserMedia ||
         navigator.webkitGetUserMedia ||
         navigator.mozGetUserMedia ||
         navigator.msGetUserMedia;
-
-    // 2. 音频处理模块
-    window.AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext || window.msAudioContext;
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         navigator.mediaDevices = navigator.mediaDevices || {}
         navigator.mediaDevices.getUserMedia = function (constraints) {
             return new Promise(function (resolve, reject) {
-                navigator.getUserMedia()
                 if (!navigator.getUserMedia) {
                     return reject('当前浏览器还不支持API: getUserMedia')
                 }
@@ -69,27 +67,69 @@
         }
     }
 
-    // 3. RTCPeerConnection
+    // 2. AudioContext
+    var AudioContext = window.AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext || window.msAudioContext;
 
-    window.RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+    // 3. RTCPeerConnection
+    var RTCPeerConnection = window.RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
 
     // 4. RTCDataChannel
-    window.RTCDataChannel = window.RTCDataChannel || window.DataChannel;
+    var RTCDataChannel = window.RTCDataChannel = window.RTCDataChannel || window.DataChannel;
 
-    // 5. requestAnimFrame
-    window.requestAnimFrame = (function () {
-        return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame ||
-            function ( /* function FrameRequestCallback */ callback, /* DOMElement Element */ element) {
-                return window.setTimeout(callback, 1000 / 60);
-            };
-    })();
+    // 5. RTCSessionDescription
+    var RTCSessionDescription = window.RTCSessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription;
+
+    // 6. RTCIceCandidate
+    var RTCIceCandidate = window.RTCIceCandidate = window.RTCIceCandidate || window.mozRTCIceCandidate;
+
+    // 7. MediaStream
+    var MediaStream = window.MediaStream = window.MediaStream || window.webkitMediaStream;
+
+    if (window.mozRTCPeerConnection || navigator.mozGetUserMedia) {
+        prefix = 'moz';
+        version = parseInt(navigator.userAgent.match(/Firefox\/([0-9]+)\./)[1], 10);
+    } else if (window.webkitRTCPeerConnection || navigator.webkitGetUserMedia) {
+        prefix = 'webkit';
+        version = navigator.userAgent.match(/Chrom(e|ium)/) && parseInt(navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./)[2], 10);
+    }
+
+    var screenSharing = window.location.protocol === 'https:' &&
+        ((prefix === 'webkit' && version >= 26) ||
+            (prefix === 'moz' && version >= 33))
+
+    var videoEl = document.createElement('video');
+    var supportVp8 = videoEl && videoEl.canPlayType && videoEl.canPlayType('video/webm; codecs="vp8", vorbis') === "probably";
+
+
+    // export support flags and constructors.prototype && PC
+    window.support = {
+        prefix: prefix,
+        browserVersion: version,
+        support: !!getUserMedia || !!RTCPeerConnection,
+        // new support style
+        supportRTCPeerConnection: !!RTCPeerConnection,
+        supportVp8: supportVp8,
+        supportGetUserMedia: !!getUserMedia,
+        supportDataChannel: !!(RTCPeerConnection && RTCPeerConnection.prototype && RTCPeerConnection.prototype.createDataChannel),
+        supportWebAudio: !!(AudioContext && AudioContext.prototype.createMediaStreamSource),
+        supportMediaStream: !!(MediaStream && MediaStream.prototype.removeTrack),
+        supportScreenSharing: !!screenSharing,
+        // constructors
+        AudioContext: AudioContext,
+        RTCPeerConnection: RTCPeerConnection,
+        RTCSessionDescription: RTCSessionDescription,
+        RTCIceCandidate: RTCIceCandidate,
+        MediaStream: MediaStream,
+        getUserMedia: getUserMedia
+    };
+
 })();
-/******************************polify end************************************ */
+/******************************polify END************************************ */
+
 
 
 
 /******************************SDK START************************************ */
-
 
 (function () {
 
@@ -127,6 +167,8 @@
         this.dataChannel = null;
         // 特殊需求时候开启的别的通道
         this.rtcDataChannels = {};
+        // 待发送的iceoffer
+        this.ice_offer = [];
         this.stream = null;
         this.inited = false;
         this.supportedListeners = {
@@ -289,6 +331,10 @@
         },
         // 初始化入口
         init(option = {}) {
+            // 先校验平台适配情况
+
+            if(!support.support) return Promise.reject('当前浏览器不支持WebRTC功能')
+
             let { url, stream, data} = option
             if (!url) return Promise.reject('缺少wss信令地址')
             this.stream = stream;
@@ -410,7 +456,9 @@
 
                 console.log('on local ICE: ', event.candidate);
                 if (event.candidate) {
-                    that.duoduo_signal.send('candidate', event.candidate);
+                    // 先缓存，在sdp_answer回来之后再发ice_offer
+                    that.ice_offer.push(event.candidate)
+                    // that.duoduo_signal.send('candidate', event.candidate);
                 } else {
                     console.log("onicecandidate end");
                 }
@@ -478,6 +526,50 @@
                     that.duoduo_signal.send('offer', offer);
                 })
             })
+        },
+        /** 将对方加入自己的候选者中 */
+        onNewPeer(candidate) {
+            // var candidate = data.data;
+            this.rtcConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        },
+        /** 接收链接邀请，发出响应 */
+        onOffer(offer) {
+            let that = this;
+            let rtcConnection = this.rtcConnection
+            // var offer = data;
+            console.log("on remote offer", offer);
+            console.log('setRemoteDescription offer')
+            rtcConnection.setRemoteDescription(offer).then(() => {
+                return rtcConnection.createAnswer().then((_answer) => {
+                    console.log('create answer:', _answer)
+                    console.log('setLocalDescription answer')
+                    return rtcConnection.setLocalDescription(_answer).then(() => {
+                        console.log('send answer')
+                        that.duoduo_signal.send('answer', _answer);
+                    })
+                })
+            }).catch((error) => {
+                console.log('onOffer error:', error)
+            })
+        },
+        /** 接收响应，设置远程的peer session */
+        onAnswer(answer) {
+            let rtcConnection = this.rtcConnection
+            // var answer = data;
+            console.log('on remote answer', answer)
+            console.log('setRemoteDescription answer')
+            rtcConnection.setRemoteDescription(answer).then(() => {
+                // 开始发送ice_offer
+                let iceOffers = this.ice_offer
+                if (iceOffers.length > 0) {
+                    iceOffers.forEach((item) => {
+                        this.duoduo_signal.send('candidate', item);
+                    })
+                }
+                this.ice_offer = []
+            }).catch(function (e) {
+                console.error(e);
+            });
         },
         // 实时更新媒体流
         updateStream(stream) {
@@ -731,41 +823,7 @@
             channel.onclose = null
             this.rtcDataChannels[channel.label] = null
         },
-        /** 将对方加入自己的候选者中 */
-        onNewPeer(candidate) {
-            // var candidate = data.data;
-            this.rtcConnection.addIceCandidate(new RTCIceCandidate(candidate));
-        },
-        /** 接收链接邀请，发出响应 */
-        onOffer(offer) {
-            let that = this;
-            let rtcConnection = this.rtcConnection
-            // var offer = data;
-            console.log("on remote offer", offer);
-            console.log('setRemoteDescription offer')
-            rtcConnection.setRemoteDescription(offer).then(() => {
-                return rtcConnection.createAnswer().then((_answer) => {
-                    console.log('create answer:', _answer)
-                    console.log('setLocalDescription answer')
-                    return rtcConnection.setLocalDescription(_answer).then(() => {
-                        console.log('send answer')
-                        that.duoduo_signal.send('answer', _answer);
-                    })
-                })
-            }).catch((error) => {
-                console.log('onOffer error:', error)
-            })
-        },
-        /** 接收响应，设置远程的peer session */
-        onAnswer(answer) {
-            let rtcConnection = this.rtcConnection
-            // var answer = data;
-            console.log('on remote answer', answer)
-            console.log('setRemoteDescription answer')
-            rtcConnection.setRemoteDescription(answer).catch(function (e) {
-                console.error(e);
-            });
-        },
+
         /*****************以下是收发各种数据格式的API, API将成对出现**********************************/
 
         /** 

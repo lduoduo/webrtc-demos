@@ -210,45 +210,45 @@ var config = {
         //下面这种写法报错
         // new HtmlWebpackPlugin({ template: './index.html' })
     ],
-    devServer: {
-        // contentBase: [distPath, path.resolve(__dirname, 'src')],
-        /**
-         * 此路径下的打包文件可在浏览器中访问。
-         * 假设服务器运行在 http://localhost:8080 并且 output.filename 被设置为 bundle.js。
-         * 默认 publicPath 是 "/"，所以你的包(bundle)可以通过 http://localhost:8080/bundle.js 访问
-         */
-        // publicPath: publicPath,
-        //告诉服务器监视那些通过 devServer.contentBase 选项提供的文件。文件改动将触发整个页面重新加载
-        // watchContentBase: true,
-        // true for index.html upon 404, object for multiple paths
-        // historyApiFallback: true,
-        /**
-         * This means that a script will be inserted in your bundle to take care of live reloading,
-         * and build messages will appear in the browser console.
-         * It is also possible to use iframe mode, which uses an <iframe> under a notification bar with messages about the build.
-         */
-        inline: true,
-        // hot module replacement. Depends on HotModuleReplacementPlugin
-        // hot: false,
-        // watchOptions: {
-        //     poll: true
-        // },
-        // compress: true,
-        // lazy: true,
-        //指定使用一个 host。默认是 localhost。如果你希望服务器外部可访问
-        // host: "192.168.31.45",
-        host: ip,
-        port: 9009,
-        headers: {
-            "X-Custom-Foo": "webpack demo"
-        },
-        watchOptions: {
-            // in ms
-            aggregateTimeout: 1000,
-            // aggregates multiple changes to a single rebuild
-            poll: 1000
-        }
-    },
+    // devServer: {
+    //     // contentBase: [distPath, path.resolve(__dirname, 'src')],
+    //     /**
+    //      * 此路径下的打包文件可在浏览器中访问。
+    //      * 假设服务器运行在 http://localhost:8080 并且 output.filename 被设置为 bundle.js。
+    //      * 默认 publicPath 是 "/"，所以你的包(bundle)可以通过 http://localhost:8080/bundle.js 访问
+    //      */
+    //     // publicPath: publicPath,
+    //     //告诉服务器监视那些通过 devServer.contentBase 选项提供的文件。文件改动将触发整个页面重新加载
+    //     // watchContentBase: true,
+    //     // true for index.html upon 404, object for multiple paths
+    //     // historyApiFallback: true,
+    //     /**
+    //      * This means that a script will be inserted in your bundle to take care of live reloading,
+    //      * and build messages will appear in the browser console.
+    //      * It is also possible to use iframe mode, which uses an <iframe> under a notification bar with messages about the build.
+    //      */
+    //     inline: true,
+    //     // hot module replacement. Depends on HotModuleReplacementPlugin
+    //     // hot: false,
+    //     // watchOptions: {
+    //     //     poll: true
+    //     // },
+    //     // compress: true,
+    //     // lazy: true,
+    //     //指定使用一个 host。默认是 localhost。如果你希望服务器外部可访问
+    //     // host: "192.168.31.45",
+    //     host: ip,
+    //     port: 9009,
+    //     headers: {
+    //         "X-Custom-Foo": "webpack demo"
+    //     },
+    //     watchOptions: {
+    //         // in ms
+    //         aggregateTimeout: 1000,
+    //         // aggregates multiple changes to a single rebuild
+    //         poll: 1000
+    //     }
+    // },
     watch: true
 }
 
