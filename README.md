@@ -82,6 +82,8 @@
 + 支持多文件同时传输，开启多个通道，通道传输完毕自动关闭销毁
 + 支持blob格式数据切块传输，demo里面是canvas导出blob进行传输，对端接收还原
 
+[后续更新独立出来](//github.com/lduoduo/webrtc-demos/tree/master/update.md)
+
 ## next step
 + 使用webaudio对音频进行各种音效处理
 + 控制摄像头和麦克风
