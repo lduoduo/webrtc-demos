@@ -55,7 +55,7 @@ wss.on('connection', function connection(ws, req) {
     // 缓存ws.send方法
     let send = ws.send
     // 改写包装
-    ws.send = function(type, data) {
+    ws.send = function (type, data) {
         // 如果客户端连接已关闭，不再发送消息
         if (this.readyState !== WebSocket.OPEN) return
         data.code = data.code || 200
@@ -70,7 +70,8 @@ wss.on('connection', function connection(ws, req) {
     ws.isAlive = true;
     ws.on('pong', heartbeat);
 
-    var roomId;
+    // 客户端加入的房号
+    var clientRoomId;
     var user = {};
 
     // dev
@@ -85,11 +86,7 @@ wss.on('connection', function connection(ws, req) {
     // You might use location.query.access_token to authenticate or share sessions
     // or req.headers.cookie (see http://stackoverflow.com/a/16395220/151312)
 
-    roomId = location.query && location.query.roomId || 'my'
-    if (!room[roomId]) {
-        room[roomId] = {};
-    }
-    var tmp = room[roomId];
+
 
     // 消息处理
     ws.on('message', function incoming(message) {
@@ -112,38 +109,52 @@ wss.on('connection', function connection(ws, req) {
 
         },
         // 加入房间
-        join(userinfo) {
-            console.log(`sb going to join-->`, roomId, Object.keys(tmp));
+        join(data = {}) {
+            let {userId, userName, roomId} = data
+
+            // 先检查有无房间号
+            if (!roomId) return ws.send('self', { type: 'join', code: 500, error: "房间号码缺失" });
+
+            clientRoomId = roomId
+
+            // 如果房间不存在，新建房间
+            if (!room[roomId]) {
+                room[roomId] = {};
+            }
+            let tmp = room[roomId];
+
+            console.log(`${ip} going to join-->`, roomId, Object.keys(tmp));
             if (Object.keys(tmp).length >= 2) {
                 //通知要连接的客户，当前房间已经满员，不能加入
                 ws.send('self', { type: 'join', code: 500, error: "房间已满, 请另选房间重新加入" });
-                console.log(`房间：${roomId}已满，请另选房间重新加入`)
+                console.log(`房间：${roomId}已满`)
                 return;
             }
-            if (userinfo && userinfo.id && userinfo.name) {
-                user = userinfo;
-                tmp[user.id] = user;
-                tmp[user.id].ws = ws;
-                users[user.id] = tmp[user.id]
+            if (userId && userName) {
+                user = { userId, userName };
+                tmp[userId] = user;
+                tmp[userId].ws = ws;
+                users[userId] = tmp[userId]
                 // return;
             } else {
                 var id = "000" + Math.floor(Math.random() * 1000);
                 id = id.slice(-5); id = id.replace('0', 'a');
-                user.id = id;
-                user.name = id;
+                userId = user.userId = id;
+                userName = user.userName = id;
                 // user.name = (userinfo && userinfo.name) || user.id;
-                tmp[user.id] = user;
-                tmp[user.id].ws = ws;
-                users[user.id] = tmp[user.id]
-                users[user.id].roomId = roomId
+                tmp[userId] = user;
+                tmp[userId].ws = ws;
+                users[userId] = tmp[userId]
+                users[userId].roomId = roomId
             }
 
             //给自己发消息
             ws.send('self', {
-                type: 'join', 
+                type: 'join',
                 code: 200,
                 user: {
-                    id: user.id, name: user.name
+                    userId,
+                    userName
                 }
             });
 
@@ -152,35 +163,43 @@ wss.on('connection', function connection(ws, req) {
                 code: 200,
                 type: 'in',
                 data: {
-                    id: user.id, name: user.name
+                    userId,
+                    userName
                 }
             });
 
             // console.log(user.id + '加入了' + roomId);
-            console.log(`${user.id} join-->`, roomId, Object.keys(tmp));
+            console.log(`${userId} join-->`, roomId, Object.keys(tmp));
         },
         // rtc指令消息
         peer(data) {
             // 广播向其他用户发消息
-            wss.to(roomId, ws).send('peer', data);
+            wss.to(clientRoomId, ws).send('peer', data);
         },
         // 离开房间
         leave(userinfo = {}) {
-            let userid = userinfo.id
-            if (userid && users[userid].roomId) {
+            let {userId, userName} = userinfo
+
+            if (userId && users[userId].roomId) {
+
+                roomId = users[userId].roomId
+
                 // 广播向其他用户发消息
                 wss.to(roomId, ws).send('sys', {
                     code: 200,
                     type: 'out',
                     data: {
-                        id: userid, name: userinfo.name
+                        userId,
+                        userName
                     }
                 });
-                delete users[userid]
-                delete room[roomId][userid]
+                delete users[userId]
+                delete room[roomId][userId]
 
-                console.log(`${userid} leave-->`, roomId, Object.keys(tmp));
-                if (Object.keys(tmp).length === 0) {
+                let myRoom = Object.keys(room[roomId])
+
+                console.log(`${userId} leave-->`, roomId, myRoom);
+                if (myRoom.length === 0) {
                     delete room[roomId]
                 }
                 // 移除client
@@ -240,7 +259,7 @@ wss.broadcast = function broadcast(ws) {
  * 如果单独访问这个方法，则视为广播给所有人的消息
  * data: 发送的消息体
  */
-wss.send = function(type, data) {
+wss.send = function (type, data) {
     if (!data) return
     if (!this.sendingList) return send(this.clients)
 
@@ -255,14 +274,14 @@ wss.send = function(type, data) {
 /**
  * 移除连接实体ws
  */
-wss.remove = function(ws) {
+wss.remove = function (ws) {
     if (!ws) return
     // 这里的clients数据结构是set，删除相对简单
     this.clients.delete(ws)
 }
 
-module.exports = function() {
-    
+module.exports = function () {
+
     console.log('ws server http on ' + config.socketPortWS + ' env: ' + config.env);
 
 }

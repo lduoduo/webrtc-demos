@@ -249,10 +249,11 @@
             /** 设置本地sdp触发本地ice */
             rtcConnection.onicecandidate = function (event) {
 
-                console.log('on local ICE: ', event.candidate);
                 if (event.candidate) {
                     // 丢掉TCP，只保留UDP
                     if (/tcp/.test(event.candidate.candidate)) return
+
+                    console.log('on local ICE: ', event.candidate);
 
                     // 先缓存，在sdp_answer回来之后再发ice_offer
                     that.ice_offer.push(event.candidate)

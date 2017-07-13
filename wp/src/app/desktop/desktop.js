@@ -21,8 +21,7 @@ window.home = {
         let roomId = window.location.href.match(/roomid=(\w+)?/gi)
         if (!roomId) return
         roomId = roomId[0].replace(/roomid=/gi, '');
-        // let ip = '192.168.31.210';
-        // let ip = '10.242.96.105';        
+
         let url = `wss://${serverIp}/rtcWs`;
         let that = this;
 
@@ -85,7 +84,7 @@ window.home = {
         let config = {
             audio: true,
             video: {
-                mediaSource: 'window' || 'screen'
+                mediaSource: 'screen'
             }
         }
         return navigator.mediaDevices.getUserMedia(config).then(function (stream) {
@@ -169,11 +168,11 @@ window.home = {
     startRtc(stream) {
         let roomId = Date.now() + ['a', 'b', 'c', 'd'][Math.floor(Math.random() * 4)]
 
-        let url = `wss://${serverIp}/rtcWs/?roomId=${roomId}`;
-        // let url = `wss://${window.location.hostname}/rtcWs/?roomId=${roomId}`;
+        let url = `wss://${serverIp}/rtcWs`;
 
         this.rtcOut = new rtcSDK();
-        this.rtcOut.init({ url, stream })
+        this.rtcOut.init({ url, roomId, stream });
+
 
         url = window.location.origin + window.location.pathname + '?roomid=' + roomId;
 

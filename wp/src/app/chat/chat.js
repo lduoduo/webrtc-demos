@@ -376,9 +376,6 @@ window.home = {
 
         let stream = this.localStream
 
-        // let host = 'ldodo.cc'
-        // let host = window.location.hostname + ':8099'
-
         let url = `wss://${serverIp}/rtcWs`;
 
         let rtc = this.rtc = new rtcSDK();
@@ -386,7 +383,8 @@ window.home = {
             console.log('支持的注册事件:', obj)
         }).catch(err => {
             Mt.alert({
-                title: err,
+                title: 'webrtc连接失败',
+                msg: JSON.stringify(err),
                 confirmBtnMsg: '好哒'
             })
         })

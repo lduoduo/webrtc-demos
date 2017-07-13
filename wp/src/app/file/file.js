@@ -68,14 +68,16 @@ window.home = {
 
         let stream = this.localStream
 
-        // let host = 'ldodo.cc'
-        // let host = window.location.hostname + ':8099'
-
-        let url = `wss://${serverIp}/rtcWs/?roomId=${cname}`;
+        let url = `wss://${serverIp}/rtcWs`;
 
         let rtc = this.rtc = new rtcSDK();
-        rtc.init({ url, stream }).then(obj => {
+        rtc.init({ url, roomId: cname, stream }).then(obj => {
             console.log('支持的注册事件:', obj)
+        }).catch(err => {
+            Mt.alert({
+                title: err,
+                confirmBtnMsg: '好哒'
+            })
         })
 
         rtc.on('stream', this.startRemoteStream.bind(this))

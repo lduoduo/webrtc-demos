@@ -77,7 +77,8 @@ wss.on('connection', function connection(ws, req) {
     ws.isAlive = true;
     ws.on('pong', heartbeat);
 
-    var roomId;
+    // 客户端加入的房号
+    var clientRoomId;
     var user = {};
 
     // dev
@@ -90,8 +91,7 @@ wss.on('connection', function connection(ws, req) {
     // You might use location.query.access_token to authenticate or share sessions
     // or req.headers.cookie (see http://stackoverflow.com/a/16395220/151312)
 
-    // 客户端加入的房号
-    var roomId;
+    
 
     // 消息处理
     ws.on('message', function incoming(message) {
@@ -115,11 +115,12 @@ wss.on('connection', function connection(ws, req) {
         },
         // 加入房间
         join(data = {}) {
-            let user = {}
             let {userId, userName, roomId} = data
 
             // 先检查有无房间号
             if (!roomId) return ws.send('self', { type: 'join', code: 500, error: "房间号码缺失" });
+
+            clientRoomId = roomId
 
             // 如果房间不存在，新建房间
             if (!room[roomId]) {
@@ -178,7 +179,7 @@ wss.on('connection', function connection(ws, req) {
         // rtc指令消息
         peer(data) {
             // 广播向其他用户发消息
-            wss.to(roomId, ws).send('peer', data);
+            wss.to(clientRoomId, ws).send('peer', data);
         },
         // 离开房间
         leave(userinfo = {}) {
