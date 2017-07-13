@@ -23,11 +23,12 @@ window.home = {
         roomId = roomId[0].replace(/roomid=/gi, '');
         // let ip = '192.168.31.210';
         // let ip = '10.242.96.105';        
-        let address = `wss://${serverIp}/rtcWs/?roomId=${roomId}`;
+        let url = `wss://${serverIp}/rtcWs`;
         let that = this;
 
         this.rtcOut = new rtcSDK();
-        this.rtcOut.init({ url: address });
+        this.rtcOut.init({ url, roomId });
+
         this.rtcOut.on('stream', function (mediastream) {
             that.showVideo(mediastream);
         }.bind(this))

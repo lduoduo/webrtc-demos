@@ -10,6 +10,7 @@
     "start": "node apps.js",
     "dev": "cd wp && npm run dev",
     "build": "npm run clean && cd wp && npm run build",
+    "sdk": "cd wp && npm run sdk",
     "tag": "node archiver.js"
   },
   "repository": {

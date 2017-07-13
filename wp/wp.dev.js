@@ -204,8 +204,8 @@ var config = {
             // filename: "[name]-[chunkhash].css",
             allChunks: true,
         }),
-        //热更新模块
-        new webpack.HotModuleReplacementPlugin()
+        //热更新模块, 暂时注释掉
+        // new webpack.HotModuleReplacementPlugin()
         // new HtmlWebpackPlugin()
         //下面这种写法报错
         // new HtmlWebpackPlugin({ template: './index.html' })

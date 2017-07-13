@@ -7,6 +7,7 @@
  * 2. 初始化，可以传入媒体流或者data数据，可选
  *      rtc.init({
  *          url: 信令服务器地址，必填
+ *          roomId: 房间号码，必填
  *          mediastream: 媒体流，可选
  *          data: 自定义data数据，可选
  *      }).then(supportedListeners=>{
@@ -40,98 +41,12 @@
  *      - rtc.updateData(data) // 传递自定义数据，目前没有任何限制(已废弃，不推荐使用)
  */
 
-/******************************polify START************************************ */
-(function () {
-    var prefix;
-    var version;
-
-    // 1. getUserMedia
-    var getUserMedia = navigator.getUserMedia = navigator.getUserMedia ||
-        navigator.webkitGetUserMedia ||
-        navigator.mozGetUserMedia ||
-        navigator.msGetUserMedia;
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices = navigator.mediaDevices || {}
-        navigator.mediaDevices.getUserMedia = function (constraints) {
-            return new Promise(function (resolve, reject) {
-                if (!navigator.getUserMedia) {
-                    return reject('当前浏览器还不支持API: getUserMedia')
-                }
-                navigator.getUserMedia(constraints, function (stream) {
-                    resolve(stream)
-                }, function (err) {
-                    reject(err)
-                });
-            })
-        }
-    }
-
-    // 2. AudioContext
-    var AudioContext = window.AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext || window.msAudioContext;
-
-    // 3. RTCPeerConnection
-    var RTCPeerConnection = window.RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
-
-    // 4. RTCDataChannel
-    var RTCDataChannel = window.RTCDataChannel = window.RTCDataChannel || window.DataChannel;
-
-    // 5. RTCSessionDescription
-    var RTCSessionDescription = window.RTCSessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription;
-
-    // 6. RTCIceCandidate
-    var RTCIceCandidate = window.RTCIceCandidate = window.RTCIceCandidate || window.mozRTCIceCandidate;
-
-    // 7. MediaStream
-    var MediaStream = window.MediaStream = window.MediaStream || window.webkitMediaStream;
-
-    if (window.mozRTCPeerConnection || navigator.mozGetUserMedia) {
-        prefix = 'moz';
-        version = parseInt(navigator.userAgent.match(/Firefox\/([0-9]+)\./)[1], 10);
-    } else if (window.webkitRTCPeerConnection || navigator.webkitGetUserMedia) {
-        prefix = 'webkit';
-        version = navigator.userAgent.match(/Chrom(e|ium)/) && parseInt(navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./)[2], 10);
-    }
-
-    var screenSharing = window.location.protocol === 'https:' &&
-        ((prefix === 'webkit' && version >= 26) ||
-            (prefix === 'moz' && version >= 33))
-
-    var videoEl = document.createElement('video');
-    var supportVp8 = videoEl && videoEl.canPlayType && videoEl.canPlayType('video/webm; codecs="vp8", vorbis') === "probably";
-
-
-    // export support flags and constructors.prototype && PC
-    window.support = {
-        prefix: prefix,
-        browserVersion: version,
-        support: !!getUserMedia || !!RTCPeerConnection,
-        // new support style
-        supportRTCPeerConnection: !!RTCPeerConnection,
-        supportVp8: supportVp8,
-        supportGetUserMedia: !!getUserMedia,
-        supportDataChannel: !!(RTCPeerConnection && RTCPeerConnection.prototype && RTCPeerConnection.prototype.createDataChannel),
-        supportWebAudio: !!(AudioContext && AudioContext.prototype.createMediaStreamSource),
-        supportMediaStream: !!(MediaStream && MediaStream.prototype.removeTrack),
-        supportScreenSharing: !!screenSharing,
-        // constructors
-        AudioContext: AudioContext,
-        RTCPeerConnection: RTCPeerConnection,
-        RTCSessionDescription: RTCSessionDescription,
-        RTCIceCandidate: RTCIceCandidate,
-        MediaStream: MediaStream,
-        getUserMedia: getUserMedia
-    };
-
-})();
-/******************************polify END************************************ */
-
-
-
-
 /******************************SDK START************************************ */
 
 (function () {
+    let support = require('./rtcPolify');
+    let signal = require('./rtcSignal');
+    let sdpUtil = require('./rtcSdpUtil');
 
     // 指定dataChannel数据发送的规则
     const RTC_DATA_TYPE = {
@@ -190,136 +105,7 @@
         // 回调监听
         this.listeners = {}
 
-        this.duoduo_signal = {
-            ws: null,
-            inited: false,
-            // 回调监听
-            listeners: {},
-            init(address) {
-                !this.inited && this.initSignal(address)
-            },
-            // 注册监听回调事件
-            on(name, fn) {
-                this.listeners[name] = fn
-            },
-            initSignal(address) {
-                let that = this;
-                // this.ws = address;
-                var ws = this.ws = new WebSocket(address);
-
-                ws.onopen = function () {
-                    that.inited = true
-                    that.join();
-                    console.log("websocket connected");
-                };
-                ws.onmessage = function (e) {
-                    let data = e.data || null
-                    data = JSON.parse(data)
-                    console.log(data);
-                    switch (data.type) {
-                        case "self": that.onSelf(data.data); break;
-                        case "sys": that.onsys(data.data); break;
-                        case "peer": that.onPeer(data.data); break;
-                    };
-                };
-                ws.onclose = function () {
-                    that.inited = false
-                    console.log('Connection lost');
-                };
-
-                // 缓存原始send方法
-                let send = ws.send;
-                // 包装send方法
-                ws.send = function (data) {
-                    // send.call(this, data);
-                    send.call(this, JSON.stringify(data));
-                    // console.log(data)
-                    console.log(`websocket send: ${data.type}`, data.data);
-                };
-            },
-            // 重置状态
-            reset() {
-                this.inited = false
-                this.ws.onopen = null
-                this.ws.onmessage = null
-                this.ws.onerror = null
-                this.ws.onclose = null
-                if (this.ws.readyState === WebSocket.OPEN) {
-                    this.ws.close()
-                }
-                this.ws = null
-                this.listeners = {}
-            },
-            // 发给自己的消息
-            onSelf(data) {
-                // 是否是join事件
-                if (data.type === 'join') {
-                    console.log(`join room ${data.code === 200 ? 'success' : 'failed'}`)
-                    if (data.code === 200) {
-                        this.listeners['connected'] && this.listeners['connected']({
-                            status: true,
-                            wss: this.ws.url
-                        })
-                        this.user = data.user
-                        return
-                    }
-                    this.listeners['connected'] && this.listeners['connected']({
-                        status: false,
-                        error: data.error
-                    })
-                }
-            },
-            // 系统消息
-            onsys(data) {
-                // 如果有人加入则开始rtc连接
-                if (data.code === 200 && data.type === 'in') {
-                    this.listeners['start'] && this.listeners['start']()
-                }
-                // 有人退出就断开rtc连接
-                if (data.code === 200 && data.type === 'out') {
-                    this.listeners['stop'] && this.listeners['stop'](data.data)
-                }
-            },
-            // peer消息
-            onPeer(data) {
-                // let {type, data} = data
-                if (!data.type) return
-                this.listeners[data.type] && this.listeners[data.type](data.data)
-            },
-            // 给服务端发送peer消息
-            send(type, data) {
-                data = {
-                    type: 'peer',
-                    data: {
-                        type,
-                        data
-                    }
-                }
-                this.ws.send(data);
-            },
-            join() {
-                this.ws.send({
-                    type: 'join'
-                })
-            },
-            sendPeer() {
-                this.ws.send({
-                    type: 'peer',
-                    data: {
-                        status: 'ready',
-                        data: 222
-                    }
-                })
-            },
-            stop() {
-                if (!this.ws) return
-                this.ws.send({
-                    type: 'leave',
-                    data: this.user
-                })
-                this.reset();
-            }
-        }
+        this.duoduo_signal = signal
     }
 
     rtcSDK.prototype = {
@@ -329,18 +115,25 @@
         on(name, fn) {
             this.listeners[name] = fn
         },
+        // 执行回调
+        emit(name, data) {
+            this.listeners[name] && this.listeners[name](data)
+        },
         // 初始化入口
         init(option = {}) {
             // 先校验平台适配情况
 
-            if(!support.support) return Promise.reject('当前浏览器不支持WebRTC功能')
+            if (!support.support) return Promise.reject('当前浏览器不支持WebRTC功能')
 
-            let { url, stream, data} = option
+            let { url, roomId, stream, data} = option
+
             if (!url) return Promise.reject('缺少wss信令地址')
+            if (!roomId) return Promise.reject('缺少房间号码')
+
             this.stream = stream;
             this.data = data;
 
-            this.duoduo_signal.init(url);
+            this.duoduo_signal.init({url, roomId});
             if (this.inited) {
                 this.updateStream()
                 return Promise.reject('请勿重复开启rtc连接')
@@ -357,7 +150,8 @@
         // 断开连接, 进行销毁工作
         stop(data) {
             if (!this.inited) return
-            this.listeners['stop'] && this.listeners['stop'](data)
+
+            this.emit('stop', data)
 
             if (this.dataChannel) this.closeChannel(this.dataChannel)
 
@@ -390,7 +184,7 @@
                 this.setup(wss)
                 return
             }
-            this.listeners['ready'] && this.listeners['ready']({ status: false, error })
+            this.emit('ready', { status: false, error })
         },
         // 初始化rtc连接，做准备工作
         setup(wss) {
@@ -425,7 +219,7 @@
 
             this.initPeerEvent();
 
-            this.listeners['ready'] && this.listeners['ready']({ status: true, url: wss })
+            this.emit('ready', { status: true, url: wss })
         },
         // 初始化注册peer系列监听事件
         initPeerEvent() {
@@ -435,14 +229,15 @@
             rtcConnection.ontrack = function (event) {
                 let stream = event.streams[0]
                 console.log("get remote track", stream);
-                that.listeners['stream'] && that.listeners['stream'](stream);
+
+                that.emit('stream', stream)
             };
 
             /** 远端流过来了, 新建video标签显示 */
             rtcConnection.onaddstream = function (event) {
 
                 console.log("get remote stream", event.stream);
-                that.listeners['stream'] && that.listeners['stream'](event.stream);
+                that.emit('stream', event.stream)
 
             };
 
@@ -456,6 +251,9 @@
 
                 console.log('on local ICE: ', event.candidate);
                 if (event.candidate) {
+                    // 丢掉TCP，只保留UDP
+                    if (/tcp/.test(event.candidate.candidate)) return
+
                     // 先缓存，在sdp_answer回来之后再发ice_offer
                     that.ice_offer.push(event.candidate)
                     // that.duoduo_signal.send('candidate', event.candidate);
@@ -508,15 +306,28 @@
             let rtcConnection = this.rtcConnection
             let config = {
                 offerToReceiveAudio: 1,
-                offerToReceiveVideo: 1
+                offerToReceiveVideo: 1,
+                voiceActivityDetection: false
             };
             rtcConnection.createOffer(config).then(function (_offer) {
+
+                // 协议更改，统一vp9编解码格式
+                _offer.sdp = sdpUtil.maybePreferVideoReceiveCodec(_offer.sdp, { videoRecvCodec: 'VP9' });
+
+                // 测试打印sdp!后期删除1
+                Mt.alert({
+                    msg: `<div style="text-align:left;">${sdp(_offer.sdp)}</div>`,
+                    html: true,
+                    confirmBtnMsg: '好'
+                });
+
                 console.log("create offer success", _offer);
                 console.log("setLocalDescription")
                 return rtcConnection.setLocalDescription(_offer).then(function () {
                     console.log("after setLocalDescription, rtcConnection.localDescription:", rtcConnection.localDescription)
                     that.duoduo_signal.send('offer', _offer);
                 })
+
             }).catch((error) => {
                 console.error("An error on startPeerConnection:", error)
                 let offer = rtcConnection.localDescription
@@ -539,12 +350,20 @@
             // var offer = data;
             console.log("on remote offer", offer);
             console.log('setRemoteDescription offer')
+
+            // 协议更改，统一vp9编解码格式
+            offer.sdp = sdpUtil.maybePreferVideoSendCodec(offer.sdp, { videoRecvCodec: 'VP9' });
+
             rtcConnection.setRemoteDescription(offer).then(() => {
                 return rtcConnection.createAnswer().then((_answer) => {
                     console.log('create answer:', _answer)
                     console.log('setLocalDescription answer')
                     return rtcConnection.setLocalDescription(_answer).then(() => {
                         console.log('send answer')
+
+                        // 协议更改，统一vp9编解码格式
+                        _answer.sdp = sdpUtil.maybePreferVideoReceiveCodec(_answer.sdp, { videoRecvCodec: 'VP9' });
+
                         that.duoduo_signal.send('answer', _answer);
                     })
                 })
@@ -795,7 +614,6 @@
 
                 if (/(Blob|ArrayBuffer)/.test(data.constructor)) data = { channelId: channel.label, data }
 
-                // that.listeners['data'] && that.listeners['data'](data);
                 that.onRemoteData(data)
 
             };
@@ -872,7 +690,6 @@
                 return this.onBuffer(result)
             }
 
-            // that.listeners['data'] && that.listeners['data'](data);
         },
         /** 接口，发送普通text */
         sendText(data) {
@@ -882,7 +699,7 @@
         /** 接收普通text */
         onText(data) {
             data = data.data.data
-            this.listeners['text'] && this.listeners['text'](data)
+            this.emit('text', data)
         },
         /** 发送聊天内容 */
         sendMessage(data) {
@@ -893,7 +710,7 @@
         onMessage(data) {
             console.log(data)
             data = data.data.data
-            this.listeners['message'] && this.listeners['message'](data)
+            this.emit('message', data)
         },
         /** 
          * 发送通知
@@ -935,7 +752,7 @@
             }
 
             // 普通通知，直接回传
-            this.listeners['notify'] && this.listeners['notify'](data)
+            this.emit('notify', data)
         },
         /** 发送ArrayBuffer */
         sendBuffer(data) {
@@ -973,10 +790,9 @@
             }
 
             // 接收状态同步回传
-            tmp.type === 'file' && this.listeners['receiveFile'] && this.listeners['receiveFile'](tmp)
-            tmp.type === 'blob' && this.listeners['receiveBlob'] && this.listeners['receiveBlob'](tmp)
-            tmp.type === 'buffer' && this.listeners['receiveBuffer'] && this.listeners['receiveBuffer'](tmp)
-
+            tmp.type === 'file' && this.emit('receiveFile', tmp)
+            tmp.type === 'blob' && this.emit('receiveBlob', tmp)
+            tmp.type === 'buffer' && this.emit('receiveBuffer', tmp)
 
             // 文件接收完毕，进行销毁工作
             if (tmp.isDone) {
@@ -1031,7 +847,8 @@
                             }
 
                             // 发送状态同步回传
-                            that.listeners['sendFile'] && that.listeners['sendFile']({ name, size, currentSize })
+                            that.emit('sendFile', { name, size, currentSize })
+
                         }).catch(err => {
                             console.error(err)
                         })
@@ -1053,5 +870,20 @@
     /****************API对外暴露部分*************** */
     window.rtcSDK = rtcSDK
 
-})()
+})();
+
+/******************************SDK END************************************ */
+
+/** 测试用 */
+window.sdp = function (str) {
+    if (!str) return
+    var reg = /(v=|o=[^0-9]|s=-|t=0|a=|b=|c=I|m=|t=0)\w{0,1}/gi
+    // var res = str.match(reg)
+    var res = str.replace(reg, function (item) {
+        return '<br>\r\n' + item
+        // console.log(item)
+    })
+    // console.log(res)
+    return res
+}
 

@@ -14,7 +14,7 @@ var options = {
 };
 
 //https
-var server = https.createServer(options, app.callback(function(e){
+var server = https.createServer(options, app.callback(function (e) {
     console.log(e)
 }));
 
@@ -90,11 +90,8 @@ wss.on('connection', function connection(ws, req) {
     // You might use location.query.access_token to authenticate or share sessions
     // or req.headers.cookie (see http://stackoverflow.com/a/16395220/151312)
 
-    roomId = location.query && location.query.roomId || 'my'
-    if (!room[roomId]) {
-        room[roomId] = {};
-    }
-    var tmp = room[roomId];
+    // 客户端加入的房号
+    var roomId;
 
     // 消息处理
     ws.on('message', function incoming(message) {
@@ -117,7 +114,19 @@ wss.on('connection', function connection(ws, req) {
 
         },
         // 加入房间
-        join(userinfo) {
+        join(data = {}) {
+            let user = {}
+            let {userId, userName, roomId} = data
+
+            // 先检查有无房间号
+            if (!roomId) return ws.send('self', { type: 'join', code: 500, error: "房间号码缺失" });
+
+            // 如果房间不存在，新建房间
+            if (!room[roomId]) {
+                room[roomId] = {};
+            }
+            let tmp = room[roomId];
+
             console.log(`${ip} going to join-->`, roomId, Object.keys(tmp));
             if (Object.keys(tmp).length >= 2) {
                 //通知要连接的客户，当前房间已经满员，不能加入
@@ -125,30 +134,31 @@ wss.on('connection', function connection(ws, req) {
                 console.log(`房间：${roomId}已满`)
                 return;
             }
-            if (userinfo && userinfo.id && userinfo.name) {
-                user = userinfo;
-                tmp[user.id] = user;
-                tmp[user.id].ws = ws;
-                users[user.id] = tmp[user.id]
+            if (userId && userName) {
+                user = { userId, userName };
+                tmp[userId] = user;
+                tmp[userId].ws = ws;
+                users[userId] = tmp[userId]
                 // return;
             } else {
                 var id = "000" + Math.floor(Math.random() * 1000);
                 id = id.slice(-5); id = id.replace('0', 'a');
-                user.id = id;
-                user.name = id;
+                userId = user.userId = id;
+                userName = user.userName = id;
                 // user.name = (userinfo && userinfo.name) || user.id;
-                tmp[user.id] = user;
-                tmp[user.id].ws = ws;
-                users[user.id] = tmp[user.id]
-                users[user.id].roomId = roomId
+                tmp[userId] = user;
+                tmp[userId].ws = ws;
+                users[userId] = tmp[userId]
+                users[userId].roomId = roomId
             }
 
             //给自己发消息
             ws.send('self', {
-                type: 'join', 
+                type: 'join',
                 code: 200,
                 user: {
-                    id: user.id, name: user.name
+                    userId,
+                    userName
                 }
             });
 
@@ -157,12 +167,13 @@ wss.on('connection', function connection(ws, req) {
                 code: 200,
                 type: 'in',
                 data: {
-                    id: user.id, name: user.name
+                    userId,
+                    userName
                 }
             });
 
             // console.log(user.id + '加入了' + roomId);
-            console.log(`${user.id} join-->`, roomId, Object.keys(tmp));
+            console.log(`${userId} join-->`, roomId, Object.keys(tmp));
         },
         // rtc指令消息
         peer(data) {
@@ -171,21 +182,28 @@ wss.on('connection', function connection(ws, req) {
         },
         // 离开房间
         leave(userinfo = {}) {
-            let userid = userinfo.id
-            if (userid && users[userid].roomId) {
+            let {userId, userName} = userinfo
+
+            if (userId && users[userId].roomId) {
+
+                roomId = users[userId].roomId
+
                 // 广播向其他用户发消息
                 wss.to(roomId, ws).send('sys', {
                     code: 200,
                     type: 'out',
                     data: {
-                        id: userid, name: userinfo.name
+                        userId,
+                        userName
                     }
                 });
-                delete users[userid]
-                delete room[roomId][userid]
+                delete users[userId]
+                delete room[roomId][userId]
 
-                console.log(`${userid} leave-->`, roomId, Object.keys(tmp));
-                if (Object.keys(tmp).length === 0) {
+                let myRoom = Object.keys(room[roomId])
+
+                console.log(`${userId} leave-->`, roomId, myRoom);
+                if (myRoom.length === 0) {
                     delete room[roomId]
                 }
                 // 移除client

@@ -46,13 +46,13 @@ window.home = {
         $('body').on('click', '.J-startMedia', this.controlMedia.bind(this))
         $('body').on('click', '.J-enableAudio', this.controlAudio.bind(this))
         $('body').on('click', '.J-switchCamera', this.switchCamera.bind(this))
-        $('body').on('click', '.J-remote-video', function () {
+        $('body').on('click', '.J-remote-video', function() {
             let local = $localVideo.srcObject
             let remote = $remoteVideo.srcObject
             $localVideo.srcObject = remote
             $remoteVideo.srcObject = local
         })
-        $('body').on('click', '.J-local-video', function () {
+        $('body').on('click', '.J-local-video', function() {
             $('.rtc-video').toggleClass('full-screen')
         })
 
@@ -83,14 +83,20 @@ window.home = {
     },
     // 切换前后摄像头
     switchCamera() {
-        if (!this.devices || this.devices.length <= 1) return
+        if (!this.devices.video || this.devices.video.length <= 1) return
         this.deviceIndex++;
-        if (this.deviceIndex === this.devices.length - 1) {
+        if (this.deviceIndex > this.devices.video.length - 1) {
             this.deviceIndex = 0;
         }
+        let deviceId = this.devices.video[this.deviceIndex].deviceId
 
-        this.stopDevice()
-        this.getLocalVideoStream(this.devices.video[this.deviceIndex].deviceId).then(() => {
+        // Mt.alert({
+        //     title: deviceId,
+        //     confirmBtnMsg: '好哒'
+        // })
+
+        this.stopDeviceVideo()
+        this.getLocalVideoStream(deviceId).then(() => {
             if ($localVideo.srcObject === undefined) {
                 let url = URL.createObjectURL(this.local.video)
                 $localVideo.src = url
@@ -124,7 +130,7 @@ window.home = {
             let tracks = mms.getTracks()
             if (!tracks || tracks.length === 0) return
 
-            mms.getTracks().forEach(function (track) {
+            mms.getTracks().forEach(function(track) {
                 track.stop()
                 mms.removeTrack(track)
             })
@@ -138,11 +144,25 @@ window.home = {
         $('.J-switchCamera').toggleClass('hide', true)
         $('.J-enableAudio').html('播放本地音频(默认不开)')
     },
+    stopDeviceAudio() {
+        let stream = this.local.audioStream
+        stream.getTracks().forEach(track => {
+            track.stop()
+            stream.removeTrack(track)
+        })
+    },
+    stopDeviceVideo() {
+        let stream = this.local.video
+        stream.getTracks().forEach(track => {
+            track.stop()
+            stream.removeTrack(track)
+        })
+    },
     /**
     * 开启音视频
     */
     initDevice() {
-        return this.getDevices().then(function (devices) {
+        return this.getDevices().then(function(devices) {
             devices = devices.video;
             return this.startLocalStream(devices[0].deviceId);
         }.bind(this)).catch(err => {
@@ -169,18 +189,18 @@ window.home = {
      */
     getDevices() {
         let that = this;
-        return new Promise(function (resolve, reject) {
+        return new Promise(function(resolve, reject) {
             // 文档见: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices
             if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
                 // console.log("your browser not support this feature");
                 return reject("your browser not support this feature, see https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices");
             }
-            navigator.mediaDevices.enumerateDevices().then(function (devices) {
+            navigator.mediaDevices.enumerateDevices().then(function(devices) {
                 let result = {
                     video: [],
                     audio: []
                 };
-                devices.forEach(function (device, index) {
+                devices.forEach(function(device, index) {
                     if (device.kind === "videoinput") {
                         result.video.push({
                             deviceId: device.deviceId,
@@ -195,7 +215,7 @@ window.home = {
                 });
                 that.devices = result;
                 return resolve(result);
-            }).catch(function (e) {
+            }).catch(function(e) {
                 return reject(e);
             });
         });
@@ -208,7 +228,7 @@ window.home = {
      */
     getLocalStream(deviceId) {
         let that = this;
-        return new Promise(function (resolve, reject) {
+        return new Promise(function(resolve, reject) {
             navigator.mediaDevices.getUserMedia({
                 video: {
                     deviceId: deviceId,
@@ -218,7 +238,7 @@ window.home = {
                     frameRate: { max: 30 }
                 },
                 audio: true
-            }).then(function (stream) {
+            }).then(function(stream) {
                 that.local.stream = stream
                 resolve(stream);
             }).catch(reject);
@@ -227,7 +247,7 @@ window.home = {
     // 获取本地视频流
     getLocalVideoStream(deviceId) {
         let that = this;
-        return new Promise(function (resolve, reject) {
+        return new Promise(function(resolve, reject) {
             navigator.mediaDevices.getUserMedia({
                 video: {
                     deviceId: deviceId,
@@ -237,7 +257,7 @@ window.home = {
                     frameRate: { max: 30 }
                 },
                 audio: false
-            }).then(function (stream) {
+            }).then(function(stream) {
                 that.local.video = stream;
                 resolve(stream);
             }).catch(reject);
@@ -246,10 +266,10 @@ window.home = {
     // 获取本地音频流
     getLocalAudioStream(deviceId) {
         let that = this;
-        return new Promise(function (resolve, reject) {
+        return new Promise(function(resolve, reject) {
             navigator.mediaDevices.getUserMedia({
                 audio: true
-            }).then(function (stream) {
+            }).then(function(stream) {
                 that.local.audioStream = stream;
                 resolve(stream);
             }).catch(reject);
@@ -284,7 +304,10 @@ window.home = {
             // 开启按钮
             $('.J-enableAudio').toggleClass('hide', false)
             $('.J-switchCamera').toggleClass('hide', this.devices.video.length <= 1)
-
+            // Mt.alert({
+            //     title: JSON.stringify(this.devices.video),
+            //     confirmBtnMsg: '好哒'
+            // })
         }).catch(error => {
             Mt.alert({
                 title: error,
@@ -356,11 +379,16 @@ window.home = {
         // let host = 'ldodo.cc'
         // let host = window.location.hostname + ':8099'
 
-        let url = `wss://${serverIp}/rtcWs/?roomId=${cname}`;
+        let url = `wss://${serverIp}/rtcWs`;
 
         let rtc = this.rtc = new rtcSDK();
-        rtc.init({ url, stream }).then(obj => {
+        rtc.init({ url, roomId: cname, stream }).then(obj => {
             console.log('支持的注册事件:', obj)
+        }).catch(err => {
+            Mt.alert({
+                title: err,
+                confirmBtnMsg: '好哒'
+            })
         })
 
         rtc.on('stream', this.startRemoteStream.bind(this))
