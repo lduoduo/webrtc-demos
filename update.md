@@ -9,7 +9,9 @@
 #### bug
 + Failed to set remote answer sdp: Failed to push down transport description: Failed to set SSL role for the channel.
     -    addTrack / removeTrack / addStream / removeStream
-    -    now android switch camera, video can refresh, audio no sound
+    -    android firefox - firefox => android switch camera, video can refresh, audio no sound
+    -    android chrome - chrome => android switch camera, video can refresh, audio no sound
+    -    android chrome - firefox => android switch camera will cause error
 + Cannot create offer in state have-local-offer
 + Firefox - Android Firefox
     -    desktop start offer can build a connection while android start offer cant not
