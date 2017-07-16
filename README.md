@@ -1,4 +1,4 @@
-## WebRTC 实验室
+## :rabbit: WebRTC 实验室
 > WebRTC支持的功能探索 by duoduo, 该项目由原 [mykoa](//github.com/lduoduo/mykoa/tree/webRTC) 项目独立出来
 
 > 目前所有功能都是基于最新chrome测试，后期会兼容其他浏览器
