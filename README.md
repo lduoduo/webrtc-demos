@@ -6,7 +6,7 @@
 [线上demo](https://ldodo.cc/webrtc)
 
 ### 目前已实现功能
-+ 实时音视频 [video online demo](//ldodo.cc/webrtc/webrtc?roomid=123)
++ 实时音视频 [video online demo](//ldodo.cc/webrtc/chat)
 + 实时桌面共享 [desktop share online demo](//ldodo.cc/webrtc/desktop) `需安装谷歌插件`[请点击下载](//github.com/lduoduo/my-chrome-extensions/tree/master/desk-capture-share)
 + 文件实时并发传输 [RTCDataChannel online demo](//ldodo.cc/webrtc/rtcdata)
 + Blob / ArrayBuffer 实时传输
@@ -69,7 +69,7 @@
 
 ## 功能导航
 
-+ [音视频功能块](//github.com/lduoduo/webrtc-demos/tree/master/wp/src/app/webrtc)
++ [音视频功能块](//github.com/lduoduo/webrtc-demos/tree/master/wp/src/app/chat)
 + [屏幕共享功能块](//github.com/lduoduo/webrtc-demos/tree/master/wp/src/app/desktop)
 + [文件并发传输](//github.com/lduoduo/webrtc-demos/tree/master/wp/src/app/file)
 + [即时文字聊天](//github.com/lduoduo/webrtc-demos/tree/master/wp/src/app/message)
