@@ -1,6 +1,7 @@
 /**
  * 实时音视频通讯
  * created by lduoduo
+ * 依赖: webAudio.js
  */
 
 // 引入样式文件
@@ -69,8 +70,10 @@ window.home = {
             })
             return
         }
-        this.stopDevice()
-        $(e.target).text('开启音视频')
+        this.stopDevice().then(() => {
+            this.stopLocalStream();
+            $(e.target).text('开启音视频')
+        })
     },
     controlAudio(e) {
         if (this.local.audio.playStatus()) {
@@ -123,8 +126,6 @@ window.home = {
         dropMS(this.local.video)
         this.local.audio && this.local.audio.destroy()
 
-        this.updateStream()
-
         function dropMS(mms) {
             if (!mms) return
             let tracks = mms.getTracks()
@@ -139,10 +140,14 @@ window.home = {
         this.local.video = null
         this.local.audio = null
 
+        this.updateStream()
+
         // 隐藏按钮
         $('.J-enableAudio').toggleClass('hide', true)
         $('.J-switchCamera').toggleClass('hide', true)
         $('.J-enableAudio').html('播放本地音频(默认不开)')
+
+        return Promise.resolve()
     },
     stopDeviceAudio() {
         let stream = this.local.audioStream
@@ -316,6 +321,15 @@ window.home = {
         })
 
     },
+    // 停止本地流显示
+    stopLocalStream(){
+        // 兼容
+        if ($localVideo.srcObject === undefined) {
+            $localVideo.src = null
+        } else {
+            $localVideo.srcObject = null;
+        }
+    },
     // 开始获取本地流
     startLocalStream(deviceId) {
         let that = this;
@@ -401,7 +415,7 @@ window.home = {
             title: status ? 'webrtc连接成功' : error,
             msg: url || '',
             confirmBtnMsg: '好哒',
-            timer: 1000
+            // timer: 1000
         });
     },
     // 接收到远程流，进行外显
@@ -409,6 +423,13 @@ window.home = {
         console.log('remote stream:', stream);
         $remoteVideo.srcObject = stream;
         $remoteVideo.play();
+
+        stream.onaddtrack = e => {
+            console.log('on addTrack', e)
+        }
+        stream.onremovetrack = e => {
+            console.log('on removeTrack', e)
+        }
     },
     // 远程连接断开
     stopRTC(uid) {

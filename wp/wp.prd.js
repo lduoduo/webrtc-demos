@@ -10,14 +10,18 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 /** 引入工具 */
 const tool = require('./utils.js');
+// 环境配置文件
+const evn_config = require('../config/wp.js')('prd');
 
 /** 监听源文件的根目录 */
 const srcPath = path.resolve(__dirname, "src/app");
 /** 文件生成后存放的根目录 */
 // const distPath = path.resolve(__dirname, "dist");
 const distPath = path.resolve(__dirname, "../public");
+
+
 /** 服务器上的静态资源公开目录 */
-const publicPath = '/static/';
+const publicPath = evn_config.frontURL;
 /** 生成脚本样式之后的文件存放的路径前缀 */
 const preStatic = 'page';
 
@@ -182,14 +186,16 @@ var config = {
             filename: "[name].css",
             allChunks: true,
         }),
+        // 暂时注释！！！
         //压缩代码
-        new webpack.optimize.UglifyJsPlugin({    
-            compress: {
-                warnings: false
-            },
-            //排除关键字
-            except: ['$super', '$', 'import', 'exports', 'require']    
-        })
+        // new webpack.optimize.UglifyJsPlugin({    
+        //     compress: {
+        //         warnings: false
+        //     },
+        //     //排除关键字
+        //     except: ['$super', '$', 'import', 'exports', 'require']    
+        // })
+
         // new HtmlWebpackPlugin()
         //下面这种写法报错
         // new HtmlWebpackPlugin({ template: './index.html' })

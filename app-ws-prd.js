@@ -1,17 +1,9 @@
-// var https = require('http');
-// var koa = require('koa');
-// var app = koa();
-// app.proxy = true;
-
 const url = require('url');
 const WebSocket = require('ws');
 
 var config = require('./config');
 //临时改一下
 
-//https
-// var server = https.createServer(options, app.callback());
-// var server = https.createServer(app.callback());
 const wss = new WebSocket.Server({ port: config.socketPortWS });
 
 // 心跳逻辑
@@ -77,7 +69,7 @@ wss.on('connection', function connection(ws, req) {
     // dev
     // const ip = req.connection.remoteAddress;
     // prod
-    // const ip = req.headers['x-forwarded-for'];
+    const ip = req.headers['x-forwarded-for'];
     // console.log(req.headers)
     console.log(`ip : ${req.headers['x-forwarded-for']}`)
 

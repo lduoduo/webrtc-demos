@@ -41,6 +41,7 @@
     "url-loader": "^0.5.8",
     "webpack": "^2.2.1",
     "webpack-dev-server": "^2.4.1",
+    "webrtc-adapter": "^4.2.0",
     "webrtcsupport": "^2.2.0",
     "wrappy": "^1.0.2"
   },

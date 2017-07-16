@@ -41,14 +41,16 @@ module.exports = function () {
         app.use(mount('/static', a));
         // app.use(statics(__dirname + '/public/app/dest/'));
 
-        app.listen(staticPort);
-
-        console.log('static on ' + staticPort);
+        if (config.env === 'prd') {
+            app.listen(staticPort);
+            // console.log('static on ' + staticPort);
+            console.log(`static: http://${config.ip}:${config.staticPort}`)
+        }
 
         if (config.env === 'dev') {
             //https
             https.createServer(options, app.callback()).listen(config.staticPorts, function () {
-                console.log('static https on ' + config.staticPorts);
+                console.log(`static: http://${config.ip}:${config.staticPorts}`)
             });
         }
 

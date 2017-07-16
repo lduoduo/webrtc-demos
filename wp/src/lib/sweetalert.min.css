@@ -69,7 +69,7 @@ body.stop-scrolling {
     margin: 0;
     padding: 0;
     line-height: normal;
-    max-height: 60vh;
+    max-height: 60vmin;
     
     max-width: 80vw;
     word-break: break-all;

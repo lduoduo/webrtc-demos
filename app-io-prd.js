@@ -13,6 +13,7 @@ var options = {
 };
 //https
 // var server = https.createServer(options, app.callback());
+
 var server = https.createServer(app.callback());
 app.on('error', function (err, ctx) {
     console.log('err:' + err.stack);
@@ -139,12 +140,10 @@ io.on('connection', function (sockets) {
 //临时改一下
 
 module.exports = function () {
-    // app.listen(config.socketPortIO);
 
     server.listen(config.socketPortIO, function () {
         console.log('io server http on ' + config.socketPortIO + ' env: ' + config.env);
     });
 
-    // console.log('socket http on ' + config.socketPortIO);
 }
 
