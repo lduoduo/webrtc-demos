@@ -38,6 +38,8 @@ window.home = {
     deviceIndex: 0,
     // 本地摄像头个数
     devices: [],
+    // 是否开启debug弹框
+    isDebugEnable: $('.J-tip-check').hasClass('active'),
     init() {
         this.initEvent();
     },
@@ -56,6 +58,7 @@ window.home = {
         $('body').on('click', '.J-local-video', function() {
             $('.rtc-video').toggleClass('full-screen')
         })
+        $('body').on('click', '.J-tip-check', this.switchDebugStatus.bind(this))
 
         window.addEventListener('beforeunload', this.destroy.bind(this));
     },
@@ -83,6 +86,11 @@ window.home = {
         }
         this.local.audio.play()
         $('.J-enableAudio').html('关闭本地音频(默认不开)')
+    },
+    // 开关debug模式
+    switchDebugStatus() {
+        $('.J-tip-check').toggleClass('active')
+        this.isDebugEnable = $('.J-tip-check').hasClass('active');
     },
     // 切换前后摄像头
     switchCamera() {
@@ -322,7 +330,7 @@ window.home = {
 
     },
     // 停止本地流显示
-    stopLocalStream(){
+    stopLocalStream() {
         // 兼容
         if ($localVideo.srcObject === undefined) {
             $localVideo.src = null
@@ -393,7 +401,7 @@ window.home = {
         let url = `wss://${serverIp}/rtcWs`;
 
         let rtc = this.rtc = new rtcSDK();
-        rtc.init({ url, roomId: cname, stream }).then(obj => {
+        rtc.init({ url, roomId: cname, stream, debug: this.isDebugEnable }).then(obj => {
             console.log('支持的注册事件:', obj)
         }).catch(err => {
             Mt.alert({

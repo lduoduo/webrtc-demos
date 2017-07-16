@@ -8,6 +8,7 @@
  *      rtc.init({
  *          url: 信令服务器地址，必填
  *          roomId: 房间号码，必填
+ *          debug: false, 是否开启debug，主要针对移动端弹框显示,默认不开启
  *          mediastream: 媒体流，可选
  *          data: 自定义data数据，可选
  *      }).then(supportedListeners=>{
@@ -94,6 +95,7 @@
         this.ice_offer = [];
         this.stream = null;
         this.inited = false;
+        this.wss = null;
         // 状态：刚初始化
         this.rtcStatus = RTC_STATUS['new'];
 
@@ -101,7 +103,8 @@
             'ready': '连接成功的回调',
             'stream': '收到远端流',
             'data': '收到远端datachannel数据',
-            'stop': '远端断开',
+            'stop': '连接断开',
+            'leave': '对方离开',
             'text': '收到纯文本消息',
             'message': '收到聊天信息',
             'command': '收到指令',
@@ -136,13 +139,14 @@
 
             if (!support.support) return Promise.reject('当前浏览器不支持WebRTC功能')
 
-            let { url, roomId, stream, data} = option
+            let { url, roomId, stream, data, debug} = option
 
             if (!url) return Promise.reject('缺少wss信令地址')
             if (!roomId) return Promise.reject('缺少房间号码')
 
             this.stream = stream;
             this.data = data;
+            this.debug = debug || false;
 
             this.duoduo_signal.init({ url, roomId });
             if (this.inited) {
@@ -151,12 +155,44 @@
             }
             this.duoduo_signal.on('connected', this.connected.bind(this))
             this.duoduo_signal.on('start', this.start.bind(this))
+            this.duoduo_signal.on('leave', this.leave.bind(this))
             this.duoduo_signal.on('stop', this.stop.bind(this))
             this.duoduo_signal.on('candidate', this.onNewPeer.bind(this))
             this.duoduo_signal.on('offer', this.onOffer.bind(this))
             this.duoduo_signal.on('answer', this.onAnswer.bind(this))
 
             return Promise.resolve(this.supportedListeners)
+        },
+        // 对方离开，清空当前rtc状态，重置
+        leave(data){
+            if (!this.inited) return
+            this.emit('leave', data)
+
+            // if (this.dataChannel) this.closeChannel(this.dataChannel)
+
+            // for (let i in this.rtcDataChannels) {
+            //     this.closeChannel(this.rtcDataChannels[i])
+            // }
+
+            // if (this.rtcConnection && this.rtcConnection.signalingState !== 'closed') this.rtcConnection.close()
+
+            // this.rtcConnection = null
+            // this.dataChannel = null
+            // this.rtcDataChannels = {}
+
+            // let stream = this.stream
+            // if (stream) {
+            //     stream.getTracks().forEach(function (track) {
+            //         track.stop()
+            //         stream.removeTrack(track)
+            //     })
+            // }
+            // this.stream = null
+            // this.listeners = {}
+            // this.inited = false
+
+            // // 重新开启准备工作
+            // this.setup()
         },
         // 断开连接, 进行销毁工作
         stop(data) {
@@ -188,6 +224,7 @@
             this.stream = null
             this.listeners = {}
             this.inited = false
+            
         },
         connected(option = {}) {
             let {status, wss, error} = option
@@ -200,6 +237,8 @@
         // 初始化rtc连接，做准备工作
         setup(wss) {
             let rtcConnection;
+
+            this.wss = wss || this.wss;
             if (navigator.mozGetUserMedia) {
                 rtcConnection = this.rtcConnection = new RTCPeerConnection();
             } else {
@@ -338,12 +377,15 @@
                 _offer.sdp = sdpUtil.maybePreferVideoReceiveCodec(_offer.sdp, { videoRecvCodec: 'VP9' });
 
                 // 测试打印sdp!后期删除1
-                Mt.alert({
-                    title: 'offer',
-                    msg: `<div style="text-align:left;">${sdp(_offer.sdp)}</div>`,
-                    html: true,
-                    confirmBtnMsg: '好'
-                });
+                if (that.debug) {
+                    Mt.alert({
+                        title: 'offer',
+                        msg: `<div style="text-align:left;">${sdp(_offer.sdp)}</div>`,
+                        html: true,
+                        confirmBtnMsg: '好'
+                    });
+                }
+
 
                 console.log(`${that.getDate()} create offer success`, _offer);
 
@@ -381,15 +423,16 @@
                 // _answer.sdp = _answer.sdp.replace(/a=setup:active/gi, function (item) {
                 //     return 'a=setup:passive'
                 // })
-                // _answer.sdp.replace(/a=setup:active/gi, 'a=setup:passive');
 
                 // 测试打印sdp!后期删除1
-                Mt.alert({
-                    title: 'answer',
-                    msg: `<div style="text-align:left;">${sdp(_answer.sdp)}</div>`,
-                    html: true,
-                    confirmBtnMsg: '好'
-                });
+                if (that.debug) {
+                    Mt.alert({
+                        title: 'answer',
+                        msg: `<div style="text-align:left;">${sdp(_answer.sdp)}</div>`,
+                        html: true,
+                        confirmBtnMsg: '好'
+                    });
+                }
 
                 return that.setLocalDescription('answer', _answer).then(() => {
                     console.log(`${that.getDate()} after setLocalDescription answer, rtcConnection.localDescription:`, rtcConnection.localDescription)
@@ -486,21 +529,21 @@
 
             // 第一次附加
             // if (!this.stream) {
-                this.stream = stream
+            this.stream = stream
 
-                // Firefox模式
-                if (rtcConnection.addTrack) {
-                    this.rtcAudioTrack = audio ? rtcConnection.addTrack(audio, stream) : null
-                    this.rtcVideoTrack = video ? rtcConnection.addTrack(video, stream) : null
-                } else {
-                    rtcConnection.addStream(stream)
-                }
+            // Firefox模式
+            if (rtcConnection.addTrack) {
+                this.rtcAudioTrack = audio ? rtcConnection.addTrack(audio, stream) : null
+                this.rtcVideoTrack = video ? rtcConnection.addTrack(video, stream) : null
+            } else {
+                rtcConnection.addStream(stream)
+            }
 
-                if (this.rtcStatus === RTC_STATUS['connected']) {
-                    this.createOffer()
-                }
+            if (this.rtcStatus === RTC_STATUS['connected']) {
+                this.createOffer()
+            }
 
-                // return
+            // return
             // }
 
             // // 更新流

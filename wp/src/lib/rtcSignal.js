@@ -121,7 +121,7 @@ module.exports = {
         }
         // 有人退出就断开rtc连接
         if (data.code === 200 && data.type === 'out') {
-            this.emit('stop', data.data)
+            this.emit('leave', data.data)
         }
     },
     // peer消息
