@@ -1,8 +1,13 @@
+// 引入样式文件
+import './rtcdata.less';
+
 // 音视频画面容器
 let $localVideo = document.querySelector('.J-local-video');
 let $remoteVideo = document.querySelector('.J-remote-video');
 
-var home = {
+let serverIp = MY.environment === 'dev' ?  window.location.hostname + ':8099' : window.location.hostname
+
+window.home = {
     // 显示远程的列表
     remoteVideo: {},
     // 远端buffer数据
@@ -26,7 +31,7 @@ var home = {
         $('body').on('click', '.J-send', function () {
             that.sendData($('.J-rtc-data').val())
         })
-        $('body').on('click', '.rtc__file', function () {
+        $('body').on('click', '.J-rtc-file', function () {
             $('#fileInput').click()
         })
         $('body').on('change', '#fileInput', this.selectedFile.bind(this))
@@ -62,8 +67,9 @@ var home = {
     },
     controlMedia(e) {
         if (!this.localStream) {
-            this.initDevice()
-            $(e.target).text('关闭音视频')
+            this.initDevice().then(()=>{
+                $(e.target).text('关闭音视频')
+            })
             return
         }
         this.stopDevice()
@@ -84,9 +90,9 @@ var home = {
     * 开启音视频
     */
     initDevice() {
-        this.getDevices().then(function (devices) {
+        return this.getDevices().then(function (devices) {
             devices = devices.video;
-            this.startLocalStream(devices[0].deviceId);
+            return this.startLocalStream(devices[0].deviceId);
         }.bind(this));
     },
     /**
@@ -149,40 +155,33 @@ var home = {
     },
     startLocalStream(deviceId) {
         let that = this;
-        this.getLocalStream(deviceId).then((stream) => {
+        return this.getLocalStream(deviceId).then((stream) => {
             that.localStream = stream;
             // $localVideo.volume = 0;
             $localVideo.autoplay = true;
             $localVideo.srcObject = stream;
 
             that.updateStream(stream)
+            return Promise.resolve()
         }).catch((e) => {
             // mylog("<font>can't get local camera, see console error info</font>", '', 'error');
             console && console.error && console.error(e);
-
+            return Promise.reject(e)
         });
     },
-    // 关闭远程视频截图功能
-    closeCanvas() {
-        if (this.canvasTimer) {
-            // 销毁定时器
-            clearInterval(this.canvasTimer)
-            this.canvasTimer = null
-            // 销毁通道
-            this.canvasChannelId && this.rtc.closeChannel(this.canvasChannelId)
-            this.canvasChannelId = null
+    // 选择文件, 多文件
+    selectedFile() {
+        let fileInput = document.querySelector('input#fileInput')
+        let files = fileInput.files
+
+        for (let i in files) {
+            let tmp = files[i]
+            tmp.constructor === File && this.sendFile(tmp)
         }
     },
-    // 远程视频截图
-    /**
-     * 
-     * 开启远程视频截图功能
-     */
-    setupCanvas() {
-        if (this.canvasTimer) {
-            return
-        }
-        let srcObj = $remoteVideo.srcObject
+    // blob入口
+    sendBlobs(){
+        let srcObj = $localVideo.srcObject
         let that = this
 
         let canvas = this.canvas
@@ -208,69 +207,19 @@ var home = {
 
         function next() {
             // 先重绘
-            ctx.drawImage($remoteVideo, 0, 0, 500, 400);
+            ctx.drawImage($localVideo, 0, 0, 500, 400);
             canvas.toBlob(function (blob) {
                 blob.name = 'canvas'
                 // blob.type = 'blob'
                 console.log('canvas data:', blob)
-                that.sendCanvas(blob)
+                that.sendCanvas(that.canvasChannelId,blob)
             }, 'image/jpeg');
         }
 
     },
-    // 发送canvas, 需要长连接不要关闭
-    sendCanvas(blob) {
-        if (!this.rtc || !this.rtc.inited) return
-
-        let that = this
-        let size = blob.size;
-        let name = blob.name;
-        let chunkSize = 16384;
-        let channelId = this.canvasChannelId
-
-        this.rtc.updateData({
-            type: blob.type || 'image',
-            channelId,
-            data: {
-                name,
-                size,
-                chunkSize
-            }
-        })
-
-        sliceFile(0);
-
-        function sliceFile(offset) {
-            var reader = new FileReader();
-            reader.onload = (function () {
-                return function (e) {
-                    let data = e.target.result
-                    // that.sendData({ type: 'file', data: { data } });
-                    that.sendData({ channelId, data });
-
-                    if (blob.size > offset + e.target.result.byteLength) {
-                        setTimeout(sliceFile, 0, offset + chunkSize);
-                    }
-                    else {
-                        that.sendData({ channelId, data: null });
-                    }
-                    // sendProgress.value = offset + e.target.result.byteLength;
-                };
-            })(blob);
-            var slice = blob.slice(offset, offset + chunkSize);
-            reader.readAsArrayBuffer(slice);
-        };
-    },
-    // 选择文件, 多文件
-    selectedFile() {
-        let fileInput = document.querySelector('input#fileInput')
-        let files = fileInput.files
-
-        for (let i in files) {
-            let tmp = files[i]
-            tmp.constructor === File && this.sendFile(tmp)
-        }
-
+    // 单个blob发送
+    sendBlob(cid, blob){
+        this.rtc.sendBlob(cid, blob)
     },
     // 单个文件发送
     sendFile(file) {
@@ -336,7 +285,7 @@ var home = {
     },
     // 这里讲音视频数据转成blob
     updateStream(stream) {
-        myLocalStream = stream;
+        window.myLocalStream = stream;
         // let blob = new Blob(stream, {
         //     type: 'image/jpeg'
         // });
@@ -354,7 +303,7 @@ var home = {
     startRTC() {
         if (this.rtc && this.rtc.inited) return
 
-        let cname = $('.rtc__channelName').val()
+        let cname = $('.J-channelName').val()
 
         if (!cname) {
             Mt.alert({
@@ -366,36 +315,50 @@ var home = {
 
         let stream = this.localStream
 
-        let host = 'ldodo.cc'
-        // let host = window.location.hostname + ':8099'
+         let url = `wss://${serverIp}/rtcWs`;
 
-        let url = `wss://${host}/rtcWs/?roomId=${cname}`;
-
-        let rtc = this.rtc = new rtcPeer();
-        rtc.init({ url, stream }).then(obj => {
+        let rtc = this.rtc = new rtcSDK();
+        rtc.init({ url, roomId: cname, stream }).then(obj => {
             console.log('支持的注册事件:', obj)
+        }).catch(err => {
+            Mt.alert({
+                title: 'webrtc连接失败',
+                msg: JSON.stringify(err),
+                confirmBtnMsg: '好哒'
+            })
         })
 
         rtc.on('stream', this.startRemoteStream.bind(this))
         rtc.on('data', this.startRemoteData.bind(this))
         rtc.on('stop', this.stopRTC.bind(this))
-        rtc.on('ready', function (obj) {
-            console.log(obj)
-            let {status, error, url} = obj
+        rtc.on('ready', this.rtcStatus.bind(this))
+        rtc.on('sendFile', this.sendFileStatus.bind(this))
+        rtc.on('receiveFile', this.receiveFileStatus.bind(this))
+    },
+    rtcStatus(obj) {
+        console.log(obj)
+        let {status, error, url} = obj
 
-            Mt.alert({
-                title: status ? 'webrtc连接成功' : error,
-                msg: url || '',
-                confirmBtnMsg: '好哒',
-                timer: 1000
-            });
-        })
+        Mt.alert({
+            title: status ? 'webrtc连接成功' : error,
+            msg: url || '',
+            confirmBtnMsg: '好哒',
+            timer: 1000
+        });
     },
     // 接收到远程流，进行外显
     startRemoteStream(stream) {
         console.log('remote stream:', stream);
         $remoteVideo.srcObject = stream;
         $remoteVideo.play();
+    },
+    // 发送文件状态回传
+    sendFileStatus(data){
+        console.log(data)
+    },
+    // 接收文件状态回传
+    receiveFileStatus(data){
+        console.log(data)
     },
     // 接收远程数据
     startRemoteData(result) {

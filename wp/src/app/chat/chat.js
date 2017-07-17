@@ -59,6 +59,7 @@ window.home = {
             $('.rtc-video').toggleClass('full-screen')
         })
         $('body').on('click', '.J-tip-check', this.switchDebugStatus.bind(this))
+        $('body').on('click', '.J-canvas', this.controlCanvas.bind(this))
 
         window.addEventListener('beforeunload', this.destroy.bind(this));
     },
@@ -377,6 +378,93 @@ window.home = {
             this.rtc.updateStream(this.local.stream)
         }
     },
+    controlCanvas(){
+        $('.J-canvas').toggleClass('active')
+        if($('.J-canvas').has('active')){
+            this.sendBlobs();
+            $('.J-canvas').html('关闭canvas')
+        }else{
+            this.stopBlobs();
+            $('.J-canvas').html('测试canvas')
+        }
+    },
+    stopBlobs(){
+        if(this.canvasTimer) clearInterval(this.canvasTimer)
+    },
+    // blob入口
+    sendBlobs() {
+        let srcObj = $localVideo.srcObject
+        let that = this
+
+        let canvas = this.canvas
+
+        if (!canvas) {
+            canvas = this.canvas = document.createElement('canvas')
+            canvas.width = 500;
+            canvas.height = 400;
+        }
+
+        let ctx = canvas.getContext('2d')
+
+        this.rtc.createChannel({
+            label: 'canvas',
+            channelStatus: 'long'
+        }).then(cid => {
+            // console.log(cid)
+            if (!cid) return
+
+            this.canvasChannelId = cid
+            this.canvasTimer = setInterval(next.bind(this), 30)
+        })
+
+        function next() {
+            // 先重绘
+            ctx.drawImage($localVideo, 0, 0, 500, 400);
+            canvas.toBlob(function(blob) {
+                blob.name = 'canvas'
+                // blob.type = 'blob'
+                console.log('canvas data:', blob)
+                that.sendBlob(that.canvasChannelId, blob)
+            }, 'image/jpeg');
+        }
+
+    },
+    // 单个blob发送
+    sendBlob(cid, blob) {
+        this.rtc.sendBlob(cid, blob)
+    },
+    // 接收blob状态回传
+    receiveBlob(data) {
+        // this.remoteData[data.name] = this.remoteData[data.name] || {}
+        // this.remoteData[data.name].data = data
+        let {name, size, currentSize} = data
+        if (currentSize == size) {
+            this.showRemoteBlob(data)
+        }
+    },
+    showRemoteBlob(data) {
+        let blobs = new window.Blob(data.buffer);
+        data.buffer = [];
+
+        // 如果是图片，进行canvas渲染
+        if (/blob/.test(data.type)) {
+            let canvas = this.canvas = document.querySelector('#canvas')
+            let ctx = canvas.getContext('2d');
+
+            let img = new Image();
+            let url = URL.createObjectURL(blobs);
+
+            img.onload = function() {
+                canvas.width = img.width
+                canvas.height = img.height
+                ctx.drawImage(img, 0, 0);
+                URL.revokeObjectURL(url);
+            }
+
+            img.src = url;
+        }
+
+    },
     /** 
      * 开启rtc连接
      * 支持的事件注册列表
@@ -414,6 +502,7 @@ window.home = {
         rtc.on('stream', this.startRemoteStream.bind(this))
         rtc.on('stop', this.stopRTC.bind(this))
         rtc.on('ready', this.rtcStatus.bind(this))
+        rtc.on('receiveBlob', this.receiveBlob.bind(this))
     },
     rtcStatus(obj) {
         console.log(obj)

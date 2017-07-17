@@ -164,7 +164,7 @@
             return Promise.resolve(this.supportedListeners)
         },
         // 对方离开，清空当前rtc状态，重置
-        leave(data){
+        leave(data) {
             if (!this.inited) return
             this.emit('leave', data)
 
@@ -224,7 +224,7 @@
             this.stream = null
             this.listeners = {}
             this.inited = false
-            
+
         },
         connected(option = {}) {
             let {status, wss, error} = option
@@ -312,8 +312,12 @@
                     console.log(`${that.getDate()} on local ICE: `, event.candidate);
 
                     // 先缓存，在sdp_answer回来之后再发ice_offer
-                    that.ice_offer.push(event.candidate)
-                    // that.duoduo_signal.send('candidate', event.candidate);
+                    if (that.localOffer) {
+                        that.ice_offer.push(event.candidate)
+                    } else {
+                        that.duoduo_signal.send('candidate', event.candidate);
+                    }
+
                 } else {
                     console.log(`${that.getDate()} onicecandidate end`);
                 }
@@ -373,6 +377,7 @@
             };
             return rtcConnection.createOffer(config).then(function (_offer) {
 
+                that.localOffer = _offer
                 // 协议更改，统一vp9编解码格式
                 _offer.sdp = sdpUtil.maybePreferVideoReceiveCodec(_offer.sdp, { videoRecvCodec: 'VP9' });
 
@@ -385,7 +390,6 @@
                         confirmBtnMsg: '好'
                     });
                 }
-
 
                 console.log(`${that.getDate()} create offer success`, _offer);
 
@@ -437,6 +441,7 @@
                 return that.setLocalDescription('answer', _answer).then(() => {
                     console.log(`${that.getDate()} after setLocalDescription answer, rtcConnection.localDescription:`, rtcConnection.localDescription)
                     that.duoduo_signal.send('answer', _answer);
+
                     return Promise.resolve();
                 })
             })
@@ -461,6 +466,7 @@
         /** 将对方加入自己的候选者中 */
         onNewPeer(candidate) {
             // var candidate = data.data;
+            console.log(`${this.getDate()} on remote ICE`, candidate)
             this.rtcConnection.addIceCandidate(new RTCIceCandidate(candidate));
         },
         /** 接收链接邀请，发出响应 */
@@ -484,6 +490,8 @@
             answer.sdp = sdpUtil.maybePreferVideoSendCodec(answer.sdp, { videoRecvCodec: 'VP9' });
 
             this.setRemoteDescription('answer', answer).then(() => {
+                this.localOffer = null
+
                 // 开始发送ice_offer
                 let iceOffers = this.ice_offer
                 if (iceOffers.length > 0) {
@@ -862,6 +870,12 @@
             let that = this
             if (!data || !data.channelType) return Promise.reject('sendNotify error: invalid parameter data')
             if (/(Blob|ArrayBuffer)/.test(data.channelType)) {
+                // 如果有channelId, 不再createChannel
+                if (data.channelId) {
+                    next();
+                    return Promise.resolve(data.channelId)
+                }
+
                 return this.createChannel({ label: data.channelType }).then((channelId) => {
                     data.channelId = channelId
                     next();
@@ -882,7 +896,7 @@
             let {type} = data
 
             // 初始化文件接收工作
-            if (type && /(file|image|canvas)/.test(type) && data.channelId) {
+            if (type && /(file|image|canvas|blob)/.test(type) && data.channelId) {
                 let tmp = this.remoteTMP[data.channelId] = {}
                 tmp.size = data.size
                 tmp.currentSize = 0
@@ -1001,12 +1015,60 @@
             };
 
         },
-        /** 发送Blob数据接口 */
-        sendBlob() {
+        /** 发送Blob数据接口
+         * channelId 传输blob数据的通道id，必填
+         * data 传输的blob数据，必填
+         */
+        sendBlob(channelId, blob) {
+            if (!channelId) return Promise.reject('no channelId')
+            if (!blob || blob.constructor !== Blob) return Promise.reject('sendBlob error: parameter invalid')
+            if (!this.inited) return Promise.reject('sendBlob error: no rtc connection')
 
+            let that = this
+            let size = blob.size;
+            let name = blob.name;
+            let chunkSize = 100000;
+
+            return this.sendNotify({
+                type: 'blob',
+                channelId,
+                channelType: 'ArrayBuffer',
+                name,
+                size,
+                chunkSize
+            }).then(() => {
+
+                sliceBlob(0);
+
+                return Promise.resolve()
+            })
+
+            function sliceBlob(offset) {
+                var reader = new FileReader();
+                reader.onload = (function () {
+                    return function (e) {
+                        let data = e.target.result
+                        let currentSize = offset + e.target.result.byteLength
+                        that.sendBuffer({ channelId, data }).then(() => {
+
+                            if (blob.size > offset + e.target.result.byteLength) {
+                                setTimeout(sliceBlob, 0, offset + chunkSize);
+                            }
+
+                            // 发送状态同步回传
+                            that.emit('sliceBlob', { name, size, currentSize })
+
+                        }).catch(err => {
+                            console.error(err)
+                        })
+
+                    };
+                })(blob);
+                var slice = blob.slice(offset, offset + chunkSize);
+                reader.readAsArrayBuffer(slice);
+            };
         }
     }
-
 
     /****************API对外暴露部分*************** */
     window.rtcSDK = rtcSDK
