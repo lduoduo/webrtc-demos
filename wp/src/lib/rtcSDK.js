@@ -46,6 +46,7 @@
 
 (function () {
     require('webrtc-adapter')
+    let sdpTransform = window.sdpTransform = require('sdp-transform')
     let support = require('./rtcPolify');
     let signal = require('./rtcSignal');
     let sdpUtil = require('./rtcSdpUtil');
@@ -93,6 +94,9 @@
         this.rtcDataChannels = {};
         // 待发送的iceoffer
         this.ice_offer = [];
+        // ice交换完毕
+        this.ice_completed = false;
+
         this.stream = null;
         this.inited = false;
         this.wss = null;
@@ -139,7 +143,7 @@
 
             if (!support.support) return Promise.reject('当前浏览器不支持WebRTC功能')
 
-            let { url, roomId, stream, data, debug} = option
+            let { url, roomId, stream, data, debug } = option
 
             if (!url) return Promise.reject('缺少wss信令地址')
             if (!roomId) return Promise.reject('缺少房间号码')
@@ -227,7 +231,7 @@
 
         },
         connected(option = {}) {
-            let {status, wss, error} = option
+            let { status, wss, error } = option
             if (status) {
                 this.setup(wss)
                 return
@@ -311,6 +315,8 @@
 
                     console.log(`${that.getDate()} on local ICE: `, event.candidate);
 
+                    if (that.ice_completed) return
+
                     // 先缓存，在sdp_answer回来之后再发ice_offer
                     if (that.localOffer) {
                         that.ice_offer.push(event.candidate)
@@ -347,6 +353,7 @@
                 if (state === 'connected') {
                     console.log(`${that.getDate()} rtc connect success`)
                     that.rtcStatus = RTC_STATUS['connected']
+                    // that.ice_completed = true
                 }
                 if (that.dataChannel) {
                     console.log(`${that.getDate()} data channel state: ` + that.dataChannel.readyState);
@@ -375,6 +382,7 @@
                 voiceActivityDetection: false
                 // iceRestart: true
             };
+            console.log('\r\n-------------------------ldodo: activity start----------------------------\r\n')
             return rtcConnection.createOffer(config).then(function (_offer) {
 
                 that.localOffer = _offer
@@ -391,10 +399,10 @@
                     });
                 }
 
-                console.log(`${that.getDate()} create offer success`, _offer);
+                // console.log(`${that.getDate()} create offer success`, _offer);
 
                 return that.setLocalDescription('offer', _offer).then(() => {
-                    console.log(`${that.getDate()} after setLocalDescription offer, rtcConnection.localDescription:`, rtcConnection.localDescription)
+                    // console.log(`${that.getDate()} setLocalDescription offer:`, rtcConnection.localDescription)
                     that.duoduo_signal.send('offer', _offer);
                     return Promise.resolve()
                 })
@@ -406,7 +414,7 @@
                 if (!offer) return Promise.reject('no offer');
 
                 return that.setLocalDescription('offer', offer).then(() => {
-                    console.log(`${that.getDate()} after setLocalDescription offer, rtcConnection.localDescription:`, rtcConnection.localDescription)
+                    // console.log(`${that.getDate()} still setLocalDescription offer:`, rtcConnection.localDescription)
                     that.duoduo_signal.send('offer', offer);
                     return Promise.resolve()
                 })
@@ -438,13 +446,78 @@
                     });
                 }
 
+                _answer = this.formatLocalDescription('remote', _answer)
+                if (!_answer) return
                 return that.setLocalDescription('answer', _answer).then(() => {
-                    console.log(`${that.getDate()} after setLocalDescription answer, rtcConnection.localDescription:`, rtcConnection.localDescription)
+                    // console.log(`${that.getDate()} setLocalDescription answer:`, rtcConnection.localDescription)
                     that.duoduo_signal.send('answer', _answer);
 
                     return Promise.resolve();
                 })
             })
+        },
+        /**
+         * 格式化sdp, 在create answer之后, 设置之前格式化
+         * 主要格式化内容: sendrecv(根据offer来)
+         * @param {any} localRemote remote/local 
+         * @param {any} data sdp内容
+         * @returns 
+         */
+        formatLocalDescription(localRemote, data) {
+
+            //test
+            if (true) return data
+            let offer
+            let answer = data
+            // test, delete later
+            // 远程offer，本地answer
+            if (localRemote === 'remote') {
+                offer = this.rtcConnection.remoteDescription
+            }
+
+            // 本地offer，远程answer
+            if (localRemote === 'local') {
+                offer = this.rtcConnection.localDescription
+            }
+
+            let offerSdp = sdpTransform.parse(offer.sdp)
+            let answerSdp = sdpTransform.parse(answer.sdp)
+            console.log(offerSdp, answerSdp)
+
+            if (localRemote == 'local') return
+            // // test
+            // if (true) return data
+
+            // /**************************** */
+
+            // let type = data.type
+            // // 先不对offer做更改
+            // if (type === 'offer') return
+
+            // let remoteOffer = this.rtcConnection.remoteDescription
+            // let localAnswer = data
+
+            // if (!remoteOffer) return
+            // let remoteSdp = sdpTransform.parse(remoteOffer.sdp)
+            // let localSdp = sdpTransform.parse(localAnswer.sdp)
+            // console.log(remoteSdp, localSdp)
+
+            // // test
+            // if (true) return data
+
+            if (!answerSdp.media) return
+            answerSdp.media.forEach((media, index) => {
+                // firefox生成的answer里面针对dataChannel会多一行这个，进行删除
+                if (media.type === 'application') {
+                    delete media.direction
+                }
+            })
+            console.log(offerSdp, answerSdp)
+
+            answer.sdp = sdpTransform.write(answerSdp)
+
+            return answer
+
         },
         /**
          * 设置本地会话内容sdp
@@ -471,6 +544,9 @@
         },
         /** 接收链接邀请，发出响应 */
         onOffer(offer) {
+
+            console.log('\r\n-------------------------ldodo: activity start----------------------------\r\n')
+
             console.log(`${this.getDate()} on remote offer`, offer);
 
             // 协议更改，统一vp9编解码格式
@@ -489,6 +565,10 @@
             // 协议更改，统一vp9编解码格式
             answer.sdp = sdpUtil.maybePreferVideoSendCodec(answer.sdp, { videoRecvCodec: 'VP9' });
 
+            // answer = this.formatLocalDescription(answer)
+            this.formatLocalDescription('local', answer)
+            // if (!answer) return
+
             this.setRemoteDescription('answer', answer).then(() => {
                 this.localOffer = null
 
@@ -505,7 +585,7 @@
             });
         },
         // 实时更新媒体流
-        updateStream(stream) {
+        updateStream1(stream) {
             if (!stream) stream = new MediaStream()
             if (stream.stream) stream = stream.stream
             let rtcConnection = this.rtcConnection
@@ -617,6 +697,129 @@
             // }
 
         },
+        updateStream(stream) {
+            if (!stream) return
+            if (stream.stream) stream = stream.stream
+
+            let isFirefox = !!navigator.mozGetUserMedia
+            let that = this
+            let rtcConnection = this.rtcConnection
+            var audioOld, videoOld, audio, video
+
+            audio = stream.getAudioTracks()[0]
+            video = stream.getVideoTracks()[0]
+
+            let tmp = rtcConnection.getLocalStreams()
+            tmp = tmp.length > 0 ? tmp[0] : null
+            console.log('当前rtc轨道数目', tmp, (tmp && tmp.getTracks().length))
+
+            // 第一次附加
+            if (!this.stream) {
+                this.stream = stream
+
+                // Firefox模式
+                if (isFirefox) {
+                    this.rtcAudioTrack = audio ? rtcConnection.addTrack(audio, this.stream) : null
+                    this.rtcVideoTrack = video ? rtcConnection.addTrack(video, this.stream) : null
+                } else {
+                    this.rtcConnection.addStream(this.stream)
+                }
+
+                tmp = rtcConnection.getLocalStreams()
+                tmp = tmp.length > 0 ? tmp[0] : null
+                console.log('更新后rtc轨道数目', tmp, (tmp && tmp.getTracks().length))
+
+                if (this.rtcStatus === RTC_STATUS['connected']) {
+                    this.createOffer()
+                }
+
+                window.myRtcStream = this.stream
+                return
+            }
+
+            // 先取所有轨道
+            audioOld = this.stream && this.stream.getAudioTracks()[0]
+            videoOld = this.stream && this.stream.getVideoTracks()[0]
+            audio = stream.getAudioTracks()[0]
+            video = stream.getVideoTracks()[0]
+
+            // 新加轨道
+            if (!audioOld) {
+                if (audio) {
+                    // Firefox模式
+                    if (isFirefox) {
+                        that.rtcAudioTrack = audio ? rtcConnection.addTrack(audio, this.stream) : null
+                    } else {
+                        this.stream.addTrack(audio)
+                    }
+                }
+            }
+
+            if (!videoOld) {
+                if (video) {
+                    // Firefox模式
+                    if (isFirefox) {
+                        this.rtcVideoTrack = video ? rtcConnection.addTrack(video, this.stream) : null
+                    } else {
+                        this.stream.addTrack(video)
+                    }
+                }
+            }
+
+            // 更新音频轨道
+            if (audioOld) {
+                // 移除轨道
+                if (!audio) {
+                    if (isFirefox) {
+                        this.rtcAudioTrack && rtcConnection.removeTrack(this.rtcAudioTrack)
+                    } else {
+                        this.stream.removeTrack(audioOld)
+                    }
+                } else {
+                    // 更新轨道
+                    if (audio !== audioOld) {
+                        if (isFirefox) {
+                            this.rtcAudioTrack && rtcConnection.removeTrack(this.rtcAudioTrack)
+                            this.rtcAudioTrack = rtcConnection.addTrack(audio, this.stream)
+                        } else {
+                            this.stream.removeTrack(audioOld)
+                            this.stream.addTrack(audio)
+                        }
+                    }
+                }
+            }
+
+            // 更新视频轨道
+            if (videoOld) {
+                // 移除轨道
+                if (!video) {
+                    if (isFirefox) {
+                        this.rtcVideoTrack && rtcConnection.removeTrack(this.rtcVideoTrack)
+                    } else {
+                        this.stream.removeTrack(videoOld)
+                    }
+                } else {
+                    // 更新轨道
+                    if (video !== videoOld) {
+                        if (isFirefox) {
+                            this.rtcVideoTrack && rtcConnection.removeTrack(this.rtcVideoTrack)
+                            this.rtcVideoTrack = rtcConnection.addTrack(video, this.stream)
+                        } else {
+                            this.stream.removeTrack(videoOld)
+                            this.stream.addTrack(video)
+                        }
+                    }
+                }
+            }
+
+            tmp = rtcConnection.getLocalStreams()
+            tmp = tmp.length > 0 ? tmp[0] : null
+            console.log('更新后rtc轨道数目', tmp, (tmp && tmp.getTracks().length))
+
+            if (this.rtcStatus === RTC_STATUS['connected']) {
+                this.createOffer()
+            }
+        },
         // 实时更新data
         /**
          * 实时更新data
@@ -697,7 +900,7 @@
         createChannel(option = {}) {
             if (!this.rtcConnection) return Promise.reject('no rtc connection')
 
-            let {label, channelStatus = 'short'} = option
+            let { label, channelStatus = 'short' } = option
 
             if (!label) return Promise.reject('missing parameter: label')
 
@@ -806,7 +1009,7 @@
          */
 
         sendData(option = {}) {
-            let {type, data, channel} = option
+            let { type, data, channel } = option
             if (!type || !data) return Promise.reject('sendData error: invalid parameter')
             if (!channel) channel = this.dataChannel
 
@@ -825,7 +1028,7 @@
             // 纯字符串数据被丢弃，理论上不应该有这种格式的数据
             if (result.constructor !== Object) return
 
-            let {type, channelId, data} = result
+            let { type, channelId, data } = result
 
             let fn = type && RTC_DATA_TYPE_RV[type] && RTC_DATA_TYPE_FN[RTC_DATA_TYPE_RV[type]]
 
@@ -857,7 +1060,7 @@
         },
         /** 接收聊天内容 */
         onMessage(data) {
-            console.log(data)
+            // console.log(data)
             data = data.data.data
             this.emit('message', data)
         },
@@ -892,8 +1095,8 @@
         onNotify(result) {
             console.log(`${this.getDate()} onNotify:`, result)
             // 是否是接收特殊数据的通知
-            let {channelId, data} = result
-            let {type} = data
+            let { channelId, data } = result
+            let { type } = data
 
             // 初始化文件接收工作
             if (type && /(file|image|canvas|blob)/.test(type) && data.channelId) {
@@ -930,7 +1133,7 @@
         onBuffer(result = {}) {
             // console.log(result)
 
-            let {channelId, data} = result
+            let { channelId, data } = result
             if (!channelId || data.constructor !== ArrayBuffer) return
 
             let tmp = this.remoteTMP[channelId]

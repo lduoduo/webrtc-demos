@@ -58,7 +58,7 @@ module.exports = {
         ws.onmessage = function (e) {
             let data = e.data || null
             data = JSON.parse(data)
-            console.log(data);
+            // console.log(data);
             switch (data.type) {
                 case "self": that.onSelf(data.data); break;
                 case "sys": that.onsys(data.data); break;

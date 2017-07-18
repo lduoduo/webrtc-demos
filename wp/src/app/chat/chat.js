@@ -387,7 +387,7 @@ window.home = {
     },
     // 接收到远程流，进行外显
     startRemoteStream(stream) {
-        console.log('remote stream:', stream);
+        // console.log('remote stream:', stream);
         $remoteVideo.srcObject = stream;
         $remoteVideo.play();
 

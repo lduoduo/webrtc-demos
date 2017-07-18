@@ -73,7 +73,7 @@ body.stop-scrolling {
     
     max-width: 80vw;
     word-break: break-all;
-    overflow: scroll;
+    overflow: auto;
 }
 
 .sweet-alert fieldset {
