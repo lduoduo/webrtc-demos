@@ -11,8 +11,7 @@ body {
     -webkit-font-smoothing: antialiased;
     font-weight: normal;
     margin: 0;
-    padding: 0;
-    // background: linear-gradient(120deg, #07CEB8 0, #4fd8c9 30%, #2291F1 70%, #4c7da7 100%);
+    padding: 0; // background: linear-gradient(120deg, #07CEB8 0, #4fd8c9 30%, #2291F1 70%, #4c7da7 100%);
     background: #1a1c1f url('@{imgs}/2.jpg') no-repeat;
     background-blend-mode: screen;
 }
@@ -185,8 +184,7 @@ ul {
         margin-top: 10vh;
         padding: 5px 0 10px;
         line-height: 1.2;
-    }
-    // 按钮盒子
+    } // 按钮盒子
     .rtc-btn-box {
         // height: 50px;
         text-align: center;
@@ -206,24 +204,25 @@ ul {
         video {
             width: 100%;
             height: 100%;
-            background: #000;
-            // max-width: 800px;
+            background: #000; // max-width: 800px;
             // max-height: 500px;
             cursor: pointer;
         }
     }
 }
 
+.btn-option {
+    margin: 10px 0;
+}
+
 // 按钮风格
 .btn {
-    border: 0 none;
-    height: 42px;
+    border: 0 none; // height: 42px;
     line-height: 42px;
     padding: 0 24px;
     display: inline-block;
     font-size: 16px;
     color: #29B9CC;
-    font-weight: 300;
     border-radius: 32px;
     font-weight: 400;
     cursor: pointer;
@@ -243,6 +242,17 @@ ul {
     &.btn-white:hover {
         color: #0e6671;
         background-color: #cbeae9;
+    }
+    &.btn-small {
+        line-height: 1.5;
+        padding: 5px 10px;
+        border-radius: 0;
+        background: rgba(255, 255, 255, 0.8);
+        &:hover,
+        &:active {
+            background: #fff;
+            color: #4b9a81;
+        }
     }
 }
 
@@ -276,7 +286,6 @@ ul {
     .item {
         font-size: 1.5rem;
         background: rgba(108, 164, 179, 0.4);
-
         transition: all 0.3s linear;
         box-sizing: border-box;
         /* width: 90%; */

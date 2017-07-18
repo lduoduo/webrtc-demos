@@ -424,9 +424,9 @@
                 // 协议更改，统一vp9编解码格式
                 _answer.sdp = sdpUtil.maybePreferVideoReceiveCodec(_answer.sdp, { videoRecvCodec: 'VP9' });
                 // 改动请见：https://stackoverflow.com/questions/34095194/web-rtc-renegotiation-errors
-                // _answer.sdp = _answer.sdp.replace(/a=setup:active/gi, function (item) {
-                //     return 'a=setup:passive'
-                // })
+                _answer.sdp = _answer.sdp.replace(/a=setup:active/gi, function (item) {
+                    return 'a=setup:passive'
+                })
 
                 // 测试打印sdp!后期删除1
                 if (that.debug) {
