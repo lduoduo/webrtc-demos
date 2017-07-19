@@ -12,7 +12,7 @@ import './chat.scss';
 let $localVideo = document.querySelector('.J-local-video');
 let $remoteVideo = document.querySelector('.J-remote-video');
 
-let serverIp = MY.environment === 'dev' ? window.location.hostname + ':8099' : window.location.hostname
+let serverIp = MY.environment === 'dev' ? `${window.location.hostname}:${MY.wsPort}` : window.location.hostname
 
 window.home = {
     // 本地流
@@ -49,17 +49,18 @@ window.home = {
         $('body').on('click', '.J-toggleScreenShare', this.toggleScreenShare.bind(this))
         $('body').on('click', '.J-toggleAudio', this.toggleAudio.bind(this))
         $('body').on('click', '.J-switchCamera', this.switchCamera.bind(this))
-        $('body').on('click', '.J-remote-video', function() {
+        $('body').on('click', '.J-remote-video', function () {
             let local = $localVideo.srcObject
             let remote = $remoteVideo.srcObject
             $localVideo.srcObject = remote
             $remoteVideo.srcObject = local
         })
-        $('body').on('click', '.J-local-video', function() {
+        $('body').on('click', '.J-local-video', function () {
             $('.rtc-video').toggleClass('full-screen')
         })
         $('body').on('click', '.J-tip-check', this.toggleDebugStatus.bind(this))
         $('body').on('click', '.J-toggleCanvas', this.toggleCanvas.bind(this))
+        $('body').on('click', '.J-showBroswer', this.showBroswer.bind(this))
 
         window.addEventListener('beforeunload', this.destroy.bind(this));
     },
@@ -67,16 +68,13 @@ window.home = {
         if (!this.rtc) return
         this.rtc.stop()
     },
-    controlMedia(e) {
-        if (!this.local.stream) {
-            this.initDevice().then(() => {
-                $(e.target).text('关闭音视频')
-            })
-            return
-        }
-        this.stopDevice().then(() => {
-            this.stopLocalStream();
-            $(e.target).text('开启音视频')
+    // 查看浏览器信息
+    showBroswer() {
+        //test
+        Mt.alert({
+            title: 'broswer info',
+            msg: JSON.stringify(platform),
+            confirmBtnMsg: '好哒'
         })
     },
     // 开关本地音频
@@ -104,7 +102,7 @@ window.home = {
                 $('.J-toggleAudio').toggleClass('hide', false)
             }).catch(err => {
                 console.error(err)
-                let error = err.constructor === String ? err : /Error/gi.test(err.constructor) ? err.stack || err.message : JSON.stringify(err)
+                let error = err.constructor === String ? err : typeof err === 'object' ? err.stack || err.message : JSON.stringify(err)
                 Mt.alert({
                     title: 'error',
                     msg: error,
@@ -115,6 +113,7 @@ window.home = {
 
         } else {
             stream.stopDeviceAudio()
+            this.local.audio = new MediaStream()
             this.updateRtcStream()
             dom.html('开启麦克风')
             $('.J-toggleAudio').toggleClass('hide', true)
@@ -134,7 +133,7 @@ window.home = {
                 $('.J-switchCamera').toggleClass('hide', false)
             }).catch(err => {
                 console.error(err)
-                let error = err.constructor === String ? err : /Error/gi.test(err.constructor) ? err.stack || err.message : JSON.stringify(err)
+                let error = err.constructor === String ? err : typeof err === 'object' ? err.stack || err.message : JSON.stringify(err)
                 Mt.alert({
                     title: 'error',
                     msg: error,
@@ -145,6 +144,7 @@ window.home = {
 
         } else {
             stream.stopDeviceVideo()
+            this.local.video = new MediaStream()
             this.updateRtcStream()
             dom.html('开启摄像头')
             $('.J-switchCamera').toggleClass('hide', true)
@@ -165,7 +165,7 @@ window.home = {
             dom.html(fn === 'startScreenShare' ? '关闭桌面共享' : '开启桌面共享')
         }).catch(err => {
             console.error(err)
-            let error = err.constructor === String ? err : /Error/gi.test(err.constructor) ? err.stack || err.message : JSON.stringify(err)
+            let error = err.constructor === String ? err : typeof err === 'object' ? err.stack || err.message : JSON.stringify(err)
             Mt.alert({
                 title: 'error',
                 msg: error,
@@ -220,7 +220,7 @@ window.home = {
         this.local.stream = new MediaStream();
 
         let videoTrack = this.local.video && this.local.video.getVideoTracks()[0]
-        let audioTrack = this.local.audio && this.local.audio.getVideoTracks()[0]
+        let audioTrack = this.local.audio && this.local.audio.getAudioTracks()[0]
         // 添加视频
         videoTrack && this.local.stream.addTrack(videoTrack)
 
@@ -288,7 +288,7 @@ window.home = {
         function next() {
             // 先重绘
             ctx.drawImage($localVideo, 0, 0, 500, 400);
-            canvas.toBlob(function(blob) {
+            canvas.toBlob(function (blob) {
                 blob.name = 'canvas'
                 // blob.type = 'blob'
                 console.log('canvas data:', blob)
@@ -305,7 +305,7 @@ window.home = {
     receiveBlob(data) {
         // this.remoteData[data.name] = this.remoteData[data.name] || {}
         // this.remoteData[data.name].data = data
-        let {name, size, currentSize} = data
+        let { name, size, currentSize } = data
         if (currentSize == size) {
             this.showRemoteBlob(data)
         }
@@ -323,7 +323,7 @@ window.home = {
             let img = new Image();
             let url = URL.createObjectURL(blobs);
 
-            img.onload = function() {
+            img.onload = function () {
                 canvas.width = img.width
                 canvas.height = img.height
                 ctx.drawImage(img, 0, 0);
@@ -370,19 +370,30 @@ window.home = {
         })
 
         rtc.on('stream', this.startRemoteStream.bind(this))
-        rtc.on('stop', this.stopRTC.bind(this))
-        rtc.on('ready', this.rtcStatus.bind(this))
+        rtc.on('stop', this.rtcStop.bind(this))
+        rtc.on('leave', this.rtcLeave.bind(this))
+        rtc.on('ready', this.rtcReady.bind(this))
+        rtc.on('connected', this.rtcConnected.bind(this))
         rtc.on('receiveBlob', this.receiveBlob.bind(this))
     },
-    rtcStatus(obj) {
+    rtcReady(obj) {
         console.log(obj)
-        let {status, error, url} = obj
+        let { status, error, url } = obj
 
-        Mt.alert({
-            title: status ? 'webrtc连接成功' : error,
+        let option = {
+            title: status ? 'webrtc服务器连接成功' : error,
             msg: url || '',
+            confirmBtnMsg: '好哒'
+        }
+        if (status) option.timer = 1000
+        Mt.alert(option);
+    },
+    rtcConnected() {
+        Mt.alert({
+            title: 'ice通信连接成功',
+            msg: '可以开启音视频通话啦~',
             confirmBtnMsg: '好哒',
-            // timer: 1000
+            timer: 1500
         });
     },
     // 接收到远程流，进行外显
@@ -399,8 +410,21 @@ window.home = {
         }
     },
     // 远程连接断开
-    stopRTC(uid) {
-        console.log(`远程rtc连接已断开,用户: `, uid)
+    rtcStop() {
+        Mt.alert({
+            title: 'webrtc服务器连接失败',
+            msg: '服务连接已断开，请稍后重新加入房间',
+            confirmBtnMsg: '好哒'
+        });
+        console.log('rtc 服务连接已断开，请稍后重新加入房间')
+    },
+    // 对方离开
+    rtcLeave(uid) {
+        Mt.alert({
+            title: '对方已断开连接',
+            confirmBtnMsg: '好哒'
+        });
+        console.log(`远程用户已断开: `, uid)
     }
 }
 
@@ -513,7 +537,7 @@ let stream = {
             let tracks = mms.getTracks()
             if (!tracks || tracks.length === 0) return
 
-            mms.getTracks().forEach(function(track) {
+            mms.getTracks().forEach(function (track) {
                 track.stop()
                 mms.removeTrack(track)
             })

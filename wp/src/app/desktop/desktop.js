@@ -3,7 +3,7 @@ require('../../resource/desk-capture-share.crx')
 // 引入样式文件
 import './desktop.css';
 
-let serverIp = MY.environment === 'dev' ? window.location.hostname + ':8099' : window.location.hostname
+let serverIp = MY.environment === 'dev' ? `${window.location.hostname}:${MY.wsPort}` : window.location.hostname
 
 window.home = {
     // 是否已下载安装插件的重试

@@ -6,7 +6,8 @@ module.exports = {
     inited: false,
     // 回调监听
     listeners: {},
-
+    // 是否是重新连接, 当服务器断开之后进行重连
+    isReconect: false,
     /**
      * 加入房间，由于目前参数是带在url上的，这边要处理一下
      * @param {any} roomId // 房间号
@@ -15,13 +16,7 @@ module.exports = {
      * @returns
      */
     init(option = {}) {
-        let {roomId, url} = option
-        if (roomId == this.roomId) {
-            return this.emit('connected', {
-                status: false,
-                error: '请不要反复加入同一个房间，换个房间吧！'
-            })
-        }
+        let { roomId, url } = option
 
         this.roomId = roomId
 
@@ -67,7 +62,8 @@ module.exports = {
         };
         ws.onclose = function () {
             that.inited = false
-            console.log('Connection lost');
+            console.log('Signal connection lost');
+            that.isReconect = true;
             that.emit('stop')
         };
 

@@ -96,7 +96,10 @@
         this.ice_offer = [];
         // ice交换完毕
         this.ice_completed = false;
-
+        // 是否是重新连接, 当服务器断开之后进行重连
+        this.isReconect = false;
+        // 是否是重新初始化rtc, 当对方离开之后重新初始化
+        this.isReSetup = false;
         this.stream = null;
         this.inited = false;
         this.wss = null;
@@ -105,6 +108,7 @@
 
         this.supportedListeners = {
             'ready': '连接成功的回调',
+            'connected': '点对点webrtc连接成功的回调',
             'stream': '收到远端流',
             'data': '收到远端datachannel数据',
             'stop': '连接断开',
@@ -152,11 +156,17 @@
             this.data = data;
             this.debug = debug || false;
 
-            this.duoduo_signal.init({ url, roomId });
             if (this.inited) {
                 this.updateStream()
                 return Promise.reject('请勿重复开启rtc连接')
             }
+
+            this.duoduo_signal.init({ url, roomId });
+
+            if (this.isReconect) {
+                return Promise.resolve()
+            }
+
             this.duoduo_signal.on('connected', this.connected.bind(this))
             this.duoduo_signal.on('start', this.start.bind(this))
             this.duoduo_signal.on('leave', this.leave.bind(this))
@@ -171,32 +181,10 @@
         leave(data) {
             if (!this.inited) return
             this.emit('leave', data)
-
-            // if (this.dataChannel) this.closeChannel(this.dataChannel)
-
-            // for (let i in this.rtcDataChannels) {
-            //     this.closeChannel(this.rtcDataChannels[i])
-            // }
-
-            // if (this.rtcConnection && this.rtcConnection.signalingState !== 'closed') this.rtcConnection.close()
-
-            // this.rtcConnection = null
-            // this.dataChannel = null
-            // this.rtcDataChannels = {}
-
-            // let stream = this.stream
-            // if (stream) {
-            //     stream.getTracks().forEach(function (track) {
-            //         track.stop()
-            //         stream.removeTrack(track)
-            //     })
-            // }
-            // this.stream = null
-            // this.listeners = {}
-            // this.inited = false
-
-            // // 重新开启准备工作
-            // this.setup()
+            this.rtcConnection.close();
+            this.isReSetup = true;
+            // 重新开启准备工作
+            this.setup()
         },
         // 断开连接, 进行销毁工作
         stop(data) {
@@ -229,6 +217,9 @@
             this.listeners = {}
             this.inited = false
 
+            this.isReSetup = false;
+            this.isReconect = true;
+
         },
         connected(option = {}) {
             let { status, wss, error } = option
@@ -243,21 +234,41 @@
             let rtcConnection;
 
             this.wss = wss || this.wss;
-            if (navigator.mozGetUserMedia) {
-                rtcConnection = this.rtcConnection = new RTCPeerConnection();
-            } else {
-                rtcConnection = this.rtcConnection = new RTCPeerConnection(null, {
-                    optional: [{
-                        googCpuOveruseDetection: false
-                    }, {
-                        // DTLS/SRTP is preferred on chrome
-                        // to interop with Firefox
-                        // which supports them by default
-                        DtlsSrtpKeyAgreement: true
-                    }
-                    ]
-                });
-            }
+
+            //Google的STUN服务器：stun:stun.l.google.com:19302 ??
+            let iceServer = {
+                "iceServers": [{
+                    "urls": "stun:173.194.202.127:19302"
+                }]
+            };
+
+            let optional = [{
+                // DTLS/SRTP is preferred on chrome
+                // to interop with Firefox
+                // which supports them by default
+                DtlsSrtpKeyAgreement: true
+            }, {
+                googCpuOveruseDetection: false
+            }];
+
+            rtcConnection = this.rtcConnection = new RTCPeerConnection(iceServer, { optional });
+
+            //chrome
+            // if (navigator.mozGetUserMedia) {
+            //     rtcConnection = this.rtcConnection = new RTCPeerConnection(iceServer);
+            // } else {
+            //     rtcConnection = this.rtcConnection = new RTCPeerConnection(iceServer, {
+            //         optional: [{
+            //             googCpuOveruseDetection: false
+            //         }, {
+            //             // DTLS/SRTP is preferred on chrome
+            //             // to interop with Firefox
+            //             // which supports them by default
+            //             DtlsSrtpKeyAgreement: true
+            //         }
+            //         ]
+            //     });
+            // }
 
             console.log(`${this.getDate()} setup peerconnection`)
             /** 初始化成功的标志位 */
@@ -279,6 +290,8 @@
             this.initPeerEvent();
 
             this.rtcStatus = RTC_STATUS['opened']
+
+            if (this.isReSetup) return
             this.emit('ready', { status: true, url: wss })
         },
         // 初始化注册peer系列监听事件
@@ -288,17 +301,13 @@
             // 远端流附加了轨道
             rtcConnection.ontrack = function (event) {
                 let stream = event.streams[0]
-                console.log(`${that.getDate()} get remote track`, stream);
-
-                // that.emit('stream', stream)
+                console.log(`${that.getDate()} on remote track`, stream);
             };
 
             /** 远端流过来了, 新建video标签显示 */
             rtcConnection.onaddstream = function (event) {
 
-                console.log(`${that.getDate()} get remote stream`, event.stream);
-                that.emit('stream', event.stream)
-
+                that.onRemoteStream(event)
             };
 
             rtcConnection.onremovestream = function (e) {
@@ -317,12 +326,14 @@
 
                     if (that.ice_completed) return
 
+                    that.duoduo_signal.send('candidate', event.candidate);
+
                     // 先缓存，在sdp_answer回来之后再发ice_offer
-                    if (that.localOffer) {
-                        that.ice_offer.push(event.candidate)
-                    } else {
-                        that.duoduo_signal.send('candidate', event.candidate);
-                    }
+                    // if (that.localOffer) {
+                    //     that.ice_offer.push(event.candidate)
+                    // } else {
+                    //     that.duoduo_signal.send('candidate', event.candidate);
+                    // }
 
                 } else {
                     console.log(`${that.getDate()} onicecandidate end`);
@@ -353,6 +364,7 @@
                 if (state === 'connected') {
                     console.log(`${that.getDate()} rtc connect success`)
                     that.rtcStatus = RTC_STATUS['connected']
+                    that.emit('connected')
                     // that.ice_completed = true
                 }
                 if (that.dataChannel) {
@@ -365,7 +377,7 @@
 
             console.log(`${this.getDate()} 开始连接, 发出链接邀请`);
             let rtcConnection = this.rtcConnection
-            let that = this
+            // let that = this
 
             this.createOffer().catch(err => {
                 console.error(err)
@@ -374,7 +386,7 @@
         },
         // 发起offer呼叫
         createOffer() {
-            let that = this
+            // let that = this
             let rtcConnection = this.rtcConnection
             let config = {
                 offerToReceiveAudio: 1,
@@ -383,14 +395,14 @@
                 // iceRestart: true
             };
             console.log('\r\n-------------------------ldodo: activity start----------------------------\r\n')
-            return rtcConnection.createOffer(config).then(function (_offer) {
+            return rtcConnection.createOffer(config).then((_offer) => {
 
-                that.localOffer = _offer
+                this.localOffer = _offer
                 // 协议更改，统一vp9编解码格式
                 _offer.sdp = sdpUtil.maybePreferVideoReceiveCodec(_offer.sdp, { videoRecvCodec: 'VP9' });
 
                 // 测试打印sdp!后期删除1
-                if (that.debug) {
+                if (this.debug) {
                     Mt.alert({
                         title: 'offer',
                         msg: `<div style="text-align:left;">${sdp(_offer.sdp)}</div>`,
@@ -399,11 +411,11 @@
                     });
                 }
 
-                // console.log(`${that.getDate()} create offer success`, _offer);
+                _offer = this.formatLocalDescription('local', _offer)
 
-                return that.setLocalDescription('offer', _offer).then(() => {
-                    // console.log(`${that.getDate()} setLocalDescription offer:`, rtcConnection.localDescription)
-                    that.duoduo_signal.send('offer', _offer);
+                return this.setLocalDescription('offer', _offer).then(() => {
+                    // console.log(`${this.getDate()} setLocalDescription offer:`, rtcConnection.localDescription)
+                    this.duoduo_signal.send('offer', _offer);
                     return Promise.resolve()
                 })
 
@@ -413,14 +425,15 @@
                 let offer = rtcConnection.localDescription
                 if (!offer) return Promise.reject('no offer');
 
-                return that.setLocalDescription('offer', offer).then(() => {
-                    // console.log(`${that.getDate()} still setLocalDescription offer:`, rtcConnection.localDescription)
-                    that.duoduo_signal.send('offer', offer);
+                return this.setLocalDescription('offer', offer).then(() => {
+                    // console.log(`${this.getDate()} still setLocalDescription offer:`, rtcConnection.localDescription)
+                    this.duoduo_signal.send('offer', offer);
                     return Promise.resolve()
                 })
 
             })
         },
+        // 回复应答
         createAnswer() {
             let that = this
             let rtcConnection = this.rtcConnection
@@ -446,7 +459,8 @@
                     });
                 }
 
-                _answer = this.formatLocalDescription('remote', _answer)
+                this.formatLocalDescription('local', _answer)
+
                 if (!_answer) return
                 return that.setLocalDescription('answer', _answer).then(() => {
                     // console.log(`${that.getDate()} setLocalDescription answer:`, rtcConnection.localDescription)
@@ -457,66 +471,82 @@
             })
         },
         /**
-         * 格式化sdp, 在create answer之后, 设置之前格式化
-         * 主要格式化内容: sendrecv(根据offer来)
+         * 格式化sdp, 在create offer之后, 设置之前格式化
+         * 主要格式化内容: 
          * @param {any} localRemote remote/local 
          * @param {any} data sdp内容
          * @returns 
          */
         formatLocalDescription(localRemote, data) {
 
-            //test
-            if (true) return data
-            let offer
-            let answer = data
-            // test, delete later
+            let offer = data
+            let type = offer.type
+
+            let answer
+
             // 远程offer，本地answer
-            if (localRemote === 'remote') {
-                offer = this.rtcConnection.remoteDescription
+            if (type == 'offer' && localRemote === 'remote') {
+                answer = this.rtcConnection.localDescription
             }
 
             // 本地offer，远程answer
-            if (localRemote === 'local') {
-                offer = this.rtcConnection.localDescription
+            if (type === 'offer' && localRemote === 'local') {
+                answer = this.rtcConnection.remoteDescription
             }
 
             let offerSdp = sdpTransform.parse(offer.sdp)
-            let answerSdp = sdpTransform.parse(answer.sdp)
-            console.log(offerSdp, answerSdp)
+            let answerSdp = answer && sdpTransform.parse(answer.sdp)
 
-            if (localRemote == 'local') return
-            // // test
+            console.log('更新前 offerSdp', offer.type, offerSdp)
+            console.log('更新前 answerSdp', answer && answer.type, answerSdp)
+
+            //test
             // if (true) return data
 
-            // /**************************** */
+            if (offer.type === 'answer') return
 
-            // let type = data.type
-            // // 先不对offer做更改
-            // if (type === 'offer') return
+            if (!offerSdp.media) return
 
-            // let remoteOffer = this.rtcConnection.remoteDescription
-            // let localAnswer = data
+            // 获取音轨和视轨
+            let stream = this.rtcConnection.getLocalStreams()
+            stream = stream[0] || new MediaStream()
+            let audio = stream.getAudioTracks()[0]
+            let video = stream.getVideoTracks()[0]
 
-            // if (!remoteOffer) return
-            // let remoteSdp = sdpTransform.parse(remoteOffer.sdp)
-            // let localSdp = sdpTransform.parse(localAnswer.sdp)
-            // console.log(remoteSdp, localSdp)
+            offerSdp.media.forEach((media, index) => {
 
-            // // test
-            // if (true) return data
+                // offer对ssrc做限制，如果没有视频或者音频，删除ssrc属性(firefox无论有无都有ssrc)
+                if (media.type === 'audio') {
+                    !audio && delete media.ssrcs && delete media.ssrcGroups && delete media.msid
+                }
+                if (media.type === 'video') {
+                    !video && delete media.ssrcs && delete media.ssrcGroups && delete media.msid
+                }
 
-            if (!answerSdp.media) return
-            answerSdp.media.forEach((media, index) => {
+                // 添加带宽限制
+                // b=AS:800
+                if (!navigator.mozGetUserMedia) {
+                    media.bandwidth = [{
+                        type: 'AS',
+                        limit: 800
+                    }]
+                } else {
+                    media.bandwidth = [{
+                        type: 'TIAS',
+                        limit: 800
+                    }]
+                }
                 // firefox生成的answer里面针对dataChannel会多一行这个，进行删除
                 if (media.type === 'application') {
                     delete media.direction
                 }
             })
-            console.log(offerSdp, answerSdp)
 
-            answer.sdp = sdpTransform.write(answerSdp)
+            console.log('更新后 offerSdp', offerSdp)
 
-            return answer
+            offer.sdp = sdpTransform.write(offerSdp)
+
+            return offer
 
         },
         /**
@@ -565,8 +595,7 @@
             // 协议更改，统一vp9编解码格式
             answer.sdp = sdpUtil.maybePreferVideoSendCodec(answer.sdp, { videoRecvCodec: 'VP9' });
 
-            // answer = this.formatLocalDescription(answer)
-            this.formatLocalDescription('local', answer)
+            this.formatLocalDescription('remote', answer)
             // if (!answer) return
 
             this.setRemoteDescription('answer', answer).then(() => {
@@ -697,6 +726,7 @@
             // }
 
         },
+        // 实时更新媒体流
         updateStream(stream) {
             if (!stream) return
             if (stream.stream) stream = stream.stream
@@ -820,6 +850,23 @@
                 this.createOffer()
             }
         },
+        // 远程流监控
+        onRemoteStream(event) {
+
+            let stream = event.stream
+            if (!stream) return
+
+            console.log(`${this.getDate()} get remote stream`, stream);
+            this.emit('stream', stream)
+
+            stream.onaddtrack = e => {
+                console.log(`${this.getDate()} on add track`, e)
+            }
+
+            stream.onremovetrack = e => {
+                console.log(`${this.getDate()} on remove track`, e)
+            }
+        },
         // 实时更新data
         /**
          * 实时更新data
@@ -840,6 +887,7 @@
             }
             注：销毁通道由接收方进行
             注：如果需要申请长连接，创建后不再关闭通道，需要传递一个参数 channelLife: 'long'，默认是短连接
+            注：接口已废弃20170720, 不再使用
          */
 
         updateData(data) {
@@ -1257,14 +1305,12 @@
                             if (blob.size > offset + e.target.result.byteLength) {
                                 setTimeout(sliceBlob, 0, offset + chunkSize);
                             }
-
                             // 发送状态同步回传
                             that.emit('sliceBlob', { name, size, currentSize })
 
                         }).catch(err => {
                             console.error(err)
                         })
-
                     };
                 })(blob);
                 var slice = blob.slice(offset, offset + chunkSize);
