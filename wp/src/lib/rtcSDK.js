@@ -247,7 +247,8 @@
                 // to interop with Firefox
                 // which supports them by default
                 DtlsSrtpKeyAgreement: true
-            }, {
+            },
+            {
                 googCpuOveruseDetection: false
             }];
 
@@ -411,7 +412,7 @@
                     });
                 }
 
-                _offer = this.formatLocalDescription('local', _offer)
+                // _offer = this.formatLocalDescription('local', _offer)
 
                 return this.setLocalDescription('offer', _offer).then(() => {
                     // console.log(`${this.getDate()} setLocalDescription offer:`, rtcConnection.localDescription)
@@ -421,7 +422,7 @@
 
             }).catch((error) => {
 
-                console.error(`${that.getDate()} An error on startPeerConnection:`, error)
+                console.error(`${this.getDate()} An error on startPeerConnection:`, error)
                 let offer = rtcConnection.localDescription
                 if (!offer) return Promise.reject('no offer');
 
@@ -459,7 +460,7 @@
                     });
                 }
 
-                this.formatLocalDescription('local', _answer)
+                // _answer = this.formatLocalDescription('local', _answer)
 
                 if (!_answer) return
                 return that.setLocalDescription('answer', _answer).then(() => {
@@ -479,33 +480,36 @@
          */
         formatLocalDescription(localRemote, data) {
 
-            let offer = data
-            let type = offer.type
+            let sdp_data = data
+            let type = sdp_data.type
 
-            let answer
+            let sdp_diff
 
             // 远程offer，本地answer
             if (type == 'offer' && localRemote === 'remote') {
-                answer = this.rtcConnection.localDescription
+                sdp_diff = this.rtcConnection.localDescription
             }
 
             // 本地offer，远程answer
             if (type === 'offer' && localRemote === 'local') {
-                answer = this.rtcConnection.remoteDescription
+                sdp_diff = this.rtcConnection.remoteDescription
             }
 
-            let offerSdp = sdpTransform.parse(offer.sdp)
-            let answerSdp = answer && sdpTransform.parse(answer.sdp)
+            // 本地answer，远程offer
+            if (type === 'answer' && localRemote === 'local') {
+                sdp_diff = this.rtcConnection.remoteDescription
+            }
 
-            console.log('更新前 offerSdp', offer.type, offerSdp)
-            console.log('更新前 answerSdp', answer && answer.type, answerSdp)
+            let sdp_data_parse = sdpTransform.parse(sdp_data.sdp)
+            let sdp_diff_parse = sdp_diff && sdpTransform.parse(sdp_diff.sdp)
+
+            console.log('更新前 sdp_data', sdp_data.type, sdp_data_parse)
+            console.log('更新前 sdp_diff', sdp_diff && sdp_diff.type, sdp_diff_parse)
 
             //test
             // if (true) return data
 
-            if (offer.type === 'answer') return
-
-            if (!offerSdp.media) return
+            if (!sdp_data_parse.media) return
 
             // 获取音轨和视轨
             let stream = this.rtcConnection.getLocalStreams()
@@ -513,7 +517,7 @@
             let audio = stream.getAudioTracks()[0]
             let video = stream.getVideoTracks()[0]
 
-            offerSdp.media.forEach((media, index) => {
+            sdp_data_parse.media.forEach((media, index) => {
 
                 // offer对ssrc做限制，如果没有视频或者音频，删除ssrc属性(firefox无论有无都有ssrc)
                 if (media.type === 'audio') {
@@ -536,17 +540,33 @@
                         limit: 800
                     }]
                 }
+
                 // firefox生成的answer里面针对dataChannel会多一行这个，进行删除
                 if (media.type === 'application') {
                     delete media.direction
                 }
+
+                // 针对answer的协议做修改,如果对方要求sendrecv,而自己没有流,则应该为inactive
+                if (type === 'answer' && sdp_diff_parse) {
+                    let direction_diff = sdp_diff_parse.media[index].direction
+                    if (/(sendrecv|recvonly)/.test(direction_diff)) {
+
+                        if (media.type === 'audio' && !audio) {
+                            media.direction = 'inactive'
+                        }
+                        if (media.type === 'video' && !video) {
+                            media.direction = 'inactive'
+                        }
+
+                    }
+                }
             })
 
-            console.log('更新后 offerSdp', offerSdp)
+            console.log('更新后 sdp_data', sdp_data_parse)
 
-            offer.sdp = sdpTransform.write(offerSdp)
+            sdp_data.sdp = sdpTransform.write(sdp_data_parse)
 
-            return offer
+            return sdp_data
 
         },
         /**
