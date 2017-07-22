@@ -20,6 +20,7 @@ exports.start = function () {
         route.get(rootPath + '/rtcdata', service.rtcdata.index),
         route.get(rootPath + '/file', service.file.index),
         route.get(rootPath + '/message', service.message.index),
-        route.get(rootPath + '/chat', service.chat.index)
+        route.get(rootPath + '/chat', service.chat.index),
+        route.get(rootPath + '/ktv', service.ktv.index)
     ]);
 }

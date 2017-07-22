@@ -129,8 +129,8 @@ wss.on('connection', function connection(ws, req) {
                 users[userId] = tmp[userId]
                 // return;
             } else {
-                var id = "000" + Math.floor(Math.random() * 1000);
-                id = id.slice(-5); id = id.replace('0', 'a');
+                var id = wss.randomUserId();
+
                 userId = user.userId = id;
                 userName = user.userName = id;
                 // user.name = (userinfo && userinfo.name) || user.id;
@@ -270,6 +270,17 @@ wss.remove = function (ws) {
     if (!ws) return
     // 这里的clients数据结构是set，删除相对简单
     this.clients.delete(ws)
+}
+/**
+ * 获取用户id随机数 0 - 10000
+ */
+wss.randomUserId = function () {
+    var id = "0000" + Math.floor(Math.random() * 10000);
+    id = id.slice(-5); id = id.replace('0', 'a');
+    if(!users[id]){
+        return id
+    }
+    return this.randomUserId()
 }
 
 module.exports = function () {

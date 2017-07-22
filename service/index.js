@@ -12,5 +12,6 @@ module.exports = {
     rtcdata: require('./p_rtcdata'),
     file: require('./p_file'),
     message: require('./p_message'),
-    chat: require('./p_chat')
+    chat: require('./p_chat'),
+    ktv: require('./p_ktv')
 }

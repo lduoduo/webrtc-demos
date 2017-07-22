@@ -38,7 +38,6 @@ const interval = setInterval(function ping() {
 var room = {};
 var users = {};
 
-// 
 /**
  * 消息数据结构约定如下:
  */
@@ -91,7 +90,6 @@ wss.on('connection', function connection(ws, req) {
     // You might use location.query.access_token to authenticate or share sessions
     // or req.headers.cookie (see http://stackoverflow.com/a/16395220/151312)
 
-    
 
     // 消息处理
     ws.on('message', function incoming(message) {
@@ -99,7 +97,7 @@ wss.on('connection', function connection(ws, req) {
 
         // 先解码
         message = JSON.parse(message || null)
-        let {type, data} = message
+        let { type, data } = message
 
         if (type) {
             option[type] && option[type](data)
@@ -115,7 +113,7 @@ wss.on('connection', function connection(ws, req) {
         },
         // 加入房间
         join(data = {}) {
-            let {userId, userName, roomId} = data
+            let { userId, userName, roomId } = data
 
             // 先检查有无房间号
             if (!roomId) return ws.send('self', { type: 'join', code: 500, error: "房间号码缺失" });
@@ -142,8 +140,8 @@ wss.on('connection', function connection(ws, req) {
                 users[userId] = tmp[userId]
                 // return;
             } else {
-                var id = "000" + Math.floor(Math.random() * 1000);
-                id = id.slice(-5); id = id.replace('0', 'a');
+                var id = wss.randomUserId();
+
                 userId = user.userId = id;
                 userName = user.userName = id;
                 // user.name = (userinfo && userinfo.name) || user.id;
@@ -183,7 +181,7 @@ wss.on('connection', function connection(ws, req) {
         },
         // 离开房间
         leave(userinfo = {}) {
-            let {userId, userName} = userinfo
+            let { userId, userName } = userinfo
 
             if (userId && users[userId].roomId) {
 
@@ -283,6 +281,17 @@ wss.remove = function (ws) {
     if (!ws) return
     // 这里的clients数据结构是set，删除相对简单
     this.clients.delete(ws)
+}
+/**
+ * 获取用户id随机数 0 - 10000
+ */
+wss.randomUserId = function () {
+    var id = "0000" + Math.floor(Math.random() * 10000);
+    id = id.slice(-5); id = id.replace('0', 'a');
+    if(!users[id]){
+        return id
+    }
+    return this.randomUserId()
 }
 
 //临时改一下
