@@ -39,7 +39,7 @@ var config = {
     target: "web",
     entry: {
         // rtcSDK: ["babel-polyfill", "./src/lib/rtcSDK.js"],
-        rtcSDK: "./src/lib/rtcSDK.js"
+        rtcSDK: "./src/sdk/rtcSDK.js"
     },
     output: {
         path: distPath,

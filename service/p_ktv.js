@@ -18,7 +18,7 @@ module.exports = {
         });
 
         this.body.addReferences('webAudio.js');
-        // this.body.addReferences('webAudio.js');
+        this.body.addReferences('musicPlug.js');
 
         yield this.body.render();
 

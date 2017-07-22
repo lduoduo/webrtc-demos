@@ -150,8 +150,12 @@ var config = {
                 use: ["file-loader?name=font/[name].[ext]&limit=10000"]
             },
             {
-                test: /\.(crx|mp3)$/,
+                test: /\.(crx)$/,
                 use: ["file-loader?name=resource/[name].[ext]"]
+            },
+            {
+                test: /\.(mp3|m4a|m4r)$/,
+                use: ["file-loader?name=media/[name].[ext]"]
             }
         ]
     },
