@@ -56,7 +56,7 @@ window.home = {
         this.lazy()
     },
     initBgMusic(file) {
-        if(true) return 
+        // if(true) return 
 
         if (!window.mv) {
             window.mv = new MusicVisualizer();
@@ -119,16 +119,20 @@ window.home = {
     },
     // 延迟加载
     lazy() {
-        lazyLoad(`${serverStatic}lib/musicPlug.js`, function () {
-            this.initBgMusic();
-            console.log('musicPlug done')
-        }.bind(this))
-        lazyLoad(`${serverStatic}lib/webAudio.js`, function () {
+
+        lazyLoad(`${serverStatic}lib/webAudio.js`).then(() => {
             console.log('webAudio done')
-        }.bind(this))
-        lazyLoad(`${serverStatic}lib/mediaRecord.js`, function () {
+            return lazyLoad(`${serverStatic}lib/musicPlug.js`)
+        }).then(() => {
+            console.log('musicPlug done')
+            return lazyLoad(`${serverStatic}lib/mediaRecord.js`)
+        }).then(() => {
+            this.initBgMusic()
+        })
+
+        lazyLoad(`${serverStatic}lib/mediaRecord.js`).then(() => {
             console.log('mediaRecord done')
-        }.bind(this))
+        })
     },
     // 注销RTC
     destroy() {
@@ -547,16 +551,16 @@ window.home = {
         });
         console.log(`远程用户已断开: `, uid)
     },
-    test(){
+    test() {
         var a = document.createElement('audio')
         a.controls = true
-        a.srcObject = mv.destination.stream;
+        a.srcObject = webAudio.destination.stream
         document.body.appendChild(a)
     }
 }
 
 // 与设备相关
-let StreamOption = {
+window.StreamOption = {
     browser: platform.name,
     isVideoEnable: false, //是否开启摄像头
     // 当前在使用摄像头的位置, 默认第一个

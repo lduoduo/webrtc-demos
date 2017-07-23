@@ -140,6 +140,7 @@ canvas,
     background-repeat: no-repeat;
     position: relative;
     opacity: 0.2;
+    transition: opacity 0.5s linear;
     &:after {
         content: '';
         display: block;

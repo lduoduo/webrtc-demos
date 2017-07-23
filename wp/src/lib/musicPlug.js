@@ -1,6 +1,6 @@
 /**
- *  音乐可视化插件 -- by duoduo
- *  https://github.com/lduoduo/H5_WebAudio_Music/blob/master/MusicVisualizePlug_zh.js
+ *  音乐可视化插件(有改动) -- by duoduo
+ *  原版： https://github.com/lduoduo/H5_WebAudio_Music/blob/master/MusicVisualizePlug_zh.js
  *  兼容：
  *      1. audio元素的播放模式
  *      2. arraybuffer解码的播放模式
@@ -19,7 +19,9 @@
         mv.on('end',cb) // 播放完毕的回调
  *  待完善：
  *      arraybuffer的本地缓存!
+ *  注：依赖插件 webAudio.js
  */
+
 var MusicVisualizer = function () {
 
     this.listeners = [];
@@ -33,32 +35,30 @@ var MusicVisualizer = function () {
 
     this.volumnId = null;
 
-    this.analyser = MusicVisualizer.ac.createAnalyser();
-    this.gainNode = MusicVisualizer.ac[MusicVisualizer.ac.createGain ? "createGain" : "createGainNode"]();
+    // this.webAudio = new webAudio()
+
+    this.analyser = webAudio.ac.createAnalyser();
+    this.gainNode = webAudio.ac[webAudio.ac.createGain ? "createGain" : "createGainNode"]();
 
     this.size = 8;
     this.analyser.fftSize = this.size * 8 * 8;
 
-    this.analyser.connect(MusicVisualizer.ac.destination);
+    this.analyser.connect(webAudio.ac.destination);
 
     this.gainNode.connect(this.analyser);
 
-    this.ac = MusicVisualizer.ac
-    this.destination = MusicVisualizer.destination
+    this.ac = webAudio.ac
+    this.destination = webAudio.destination
     this.outputStream = this.destination.stream
 
     this.xhr = new XMLHttpRequest();
 }
 
-window.AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext || window.msAudioContext;
-
-MusicVisualizer.ac = new (window.AudioContext)();
-MusicVisualizer.destination = MusicVisualizer.ac.createMediaStreamDestination()
-
 //检测是否为function
 MusicVisualizer.isFunction = function (fun) {
     return Object.prototype.toString.call(fun) == "[object Function]";
 }
+
 MusicVisualizer.prototype = {
     // //将canvas用作背景,目前在新的chrome里已经不支持了
     // ini = function (canvas, canvasId, volumnId) {
@@ -129,10 +129,10 @@ MusicVisualizer.prototype = {
         this.stop(true);
 
         return new Promise((resolve, reject) => {
-            MusicVisualizer.ac.decodeAudioData(arraybuffer, function (buffer) {
+            webAudio.ac.decodeAudioData(arraybuffer, function (buffer) {
 
                 self.source.curr = self.source.newUrl;
-                var bs = MusicVisualizer.ac.createBufferSource();
+                var bs = webAudio.ac.createBufferSource();
                 bs.buffer = buffer;
                 // bs.loop = true;
 
@@ -147,7 +147,7 @@ MusicVisualizer.prototype = {
                 bs.onended = self.onended.bind(self)
 
                 // 更新stream
-                self.outputStream = MusicVisualizer.destination.stream
+                self.outputStream = webAudio.destination.stream
 
                 resolve(self.source.newUrl)
 
@@ -203,7 +203,7 @@ MusicVisualizer.prototype = {
                     self.audio = new Audio(url);
                     self.audio.crossOrigin = 'anonymous';
                     // self.audio.loop = true;
-                    var bs = MusicVisualizer.ac.createMediaElementSource(self.audio);
+                    var bs = webAudio.ac.createMediaElementSource(self.audio);
                     bs.connect(self.gainNode);
                     self.source.bs = bs;
                     self.audio.onended = this.onended.bind(this);
@@ -218,7 +218,7 @@ MusicVisualizer.prototype = {
                 }
 
                 // 更新stream
-                self.outputStream = MusicVisualizer.destination.stream
+                self.outputStream = webAudio.destination.stream
 
                 self.source.curr = url;
 
@@ -231,7 +231,7 @@ MusicVisualizer.prototype = {
         })
 
     },
-    
+
     // 播放完毕回调
     onended() {
         if (this.source.curr === this.source.newUrl) {

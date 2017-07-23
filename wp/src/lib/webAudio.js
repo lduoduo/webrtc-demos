@@ -67,17 +67,17 @@ webAudio.prototype = {
 
         // 初始化节点
         this.initAudioNode()
-    }
+    },
 
     // 先验证输入流数据是否合法
-    , validateInput() {
+    validateInput() {
         let stream = this.stream
         // 注：Firefox通过API获取的原生流构造函数是：LocalMediaStream
         return /(Array|MediaStream|LocalMediaStream)/.test(stream.constructor)
-    }
+    },
 
     // 第一步：初始化音量分析监控的脚本节点
-    , initMonitor() {
+    initMonitor() {
         var that = this
 
         var scriptNode = this.script = this.context.createScriptProcessor(0, 1, 1)
@@ -98,19 +98,47 @@ webAudio.prototype = {
             that.slow = 0.95 * that.slow + 0.05 * that.instant
             that.clip = clipcount / input.length
         }
-    }
+    },
 
     // 第二步：初始化webaudio的连接工作
-    , initWebAudio() {
+    initWebAudio() {
         let context = this.context
 
+        // 增益
         this.gainFilter = context.createGain()
-        // this.destination = context.createMediaStreamDestination()
+
+        // 滤波器，可以通过该处理器对音乐进行降噪、去人声等处理 chrome55以上
+        this.biquadFilter = context.createBiquadFilter();
+        // Manipulate the Biquad filter
+        this.biquadFilter.type = "lowshelf";
+        this.biquadFilter.frequency.value = 400;
+        this.biquadFilter.gain.value = 25;
+
+        // 动态压缩器节点
+        this.compressor = context.createDynamicsCompressor();
+        this.compressor.threshold.value = -50;
+        this.compressor.knee.value = 40;
+        this.compressor.ratio.value = 12;
+        this.compressor.attack.value = 0;
+        this.compressor.release.value = 0.25;
+
+        // 混响
+        this.convolver = context.createConvolver();
+
+        // 目的地
         this.destination = webAudio.destination
 
         this.gainFilter.gain.value = this.gain
 
         this.gainFilter.connect(this.destination)
+
+        // this.biquadFilter.connect(this.compressor)
+
+        // this.compressor.connect(this.destination)
+
+        // this.convolver.connect(this.destination)
+
+
     }
 
     // 第三步：初始化音频输入

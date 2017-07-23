@@ -30,8 +30,11 @@ window.lazyLoad = function(url,cb){
         dom = document.createElement('script')
         dom.src = url
     }
-    dom.onload = cb || function(){}
-    document.body.appendChild(dom)
+    return new Promise((resolve, reject)=>{
+        dom.onload = resolve
+        document.body.appendChild(dom)
+    })
+    
 }
 
 //弹窗插件配置
