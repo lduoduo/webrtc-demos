@@ -7,6 +7,7 @@ var CleanPlugin = require('clean-webpack-plugin');
 
 const ExtractTextPlugin = require("extract-text-webpack-plugin");
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const tinyPngWebpackPlugin = require('tinypng-webpack-plugin');
 
 /** 引入工具 */
 const tool = require('./utils.js');
@@ -95,7 +96,7 @@ var config = {
                 //     }
                 // }, "sass-loader"]
 
-                
+
                 use: ExtractTextPlugin.extract({
                     use: [
                         // "style-loader",
@@ -146,7 +147,7 @@ var config = {
                 use: ['url-loader?limit=8192&name=img/[name].[ext]']
             },
             {
-                test: /\.(eot|ttf|bmp|svg|woff|woff2)$/,
+                test: /\.(eot|ttf|bmp|bmp2|svg|woff|woff2)$/,
                 use: ["file-loader?name=font/[name].[ext]&limit=10000"]
             },
             {

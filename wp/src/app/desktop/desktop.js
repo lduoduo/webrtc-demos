@@ -3,7 +3,7 @@ require('../../resource/desk-capture-share.crx')
 // 引入样式文件
 import './desktop.css';
 
-let serverIp = MY.environment === 'dev' ? `${window.location.hostname}:${MY.wsPort}` : window.location.hostname
+let serverWs = MY.environment === 'dev' ? `${window.location.hostname}:${MY.wsPort}` : window.location.hostname
 
 window.home = {
     // 是否已下载安装插件的重试
@@ -22,7 +22,7 @@ window.home = {
         if (!roomId) return
         roomId = roomId[0].replace(/roomid=/gi, '');
 
-        let url = `wss://${serverIp}/rtcWs`;
+        let url = `wss://${serverWs}/rtcWs`;
         let that = this;
 
         this.rtcOut = new rtcSDK();
@@ -168,7 +168,7 @@ window.home = {
     startRtc(stream) {
         let roomId = Date.now() + ['a', 'b', 'c', 'd'][Math.floor(Math.random() * 4)]
 
-        let url = `wss://${serverIp}/rtcWs`;
+        let url = `wss://${serverWs}/rtcWs`;
 
         this.rtcOut = new rtcSDK();
         this.rtcOut.init({ url, roomId, stream });

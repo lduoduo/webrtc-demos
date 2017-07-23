@@ -1,27 +1,52 @@
 <% include ../layout/header.html %>
 
 <div class="rtc-main">
-
     <h2 class="rtc-title">在线KTV<br></h2>
     <div class="rtc-btn-box ">
-        <input class="input rtc-channelName J-channelName" type="text" placeholder="请输入数字房间号，相同房间可进行通信哦">
-        <a class="btn btn-white J-start">加入房间</a>
+        <div class="btn-option">
+            <input class="input rtc-channelName J-channelName" type="text" placeholder="数字房号">
+        </div>
+        <div class="btn-option">
+            <a class="btn btn-white J-start">加入</a>
+        </div>
         <span class="checkbox J-tip-check">debug</span>
-        <p class="btn-option">
-            <a class="btn btn-small J-showBroswer">查看浏览器信息</a>
-            <a class="btn btn-small J-toggleMic">开启麦克风</a>
-            <a class="btn btn-small J-toggleCam">开启摄像头</a>
-            <a class="btn btn-small J-toggleScreenShare hide">开启桌面共享</a>
-            <a class="btn btn-small J-switchCamera hide">切换摄像头</a>
-            <a class="btn btn-small J-toggleAudio hide">播放本地音频(默认不开)</a>
-        </p>
     </div>
-    <div class="rtc-media ">
-        <div class="rtc-video">
-            <video class="video local J-local-video"></video>
+    <div class="rtc-media">
+        <div class="play J-play active"></div>
+        <div class="video">
+            <video class="J-local-video"></video>
+        </div>
+        <canvas id="canvas" class="canvas J-canvas"></canvas>
+        <div class="music-option">
+            <div class="btn-option">
+                <a title="浏览器信息" class="btn btn-icon J-showBrowser active"><i class="icon browser"></i></a>
+                <a title="选择本地伴奏" class="btn btn-icon J-rtc-file active"><i class="icon music"></i></a>
+                <input type="file" class="hide" id="fileInput">
+                <a title="开关麦克风" class="btn btn-icon J-toggleMic"><i class="icon mic"></i></a>
+                <a title="开关试音" class="btn btn-icon J-toggleAudio hide"><i class="icon volume"></i></a>
+                <a title="开关摄像头" class="btn btn-icon J-toggleCam"><i class="icon camera"></i></a>
+                <a title="切换摄像头" class="btn btn-icon J-switchCamera"><i class="icon camera-switch"></i></a>
+                <a title="开关桌面共享" class="btn btn-icon J-toggleScreenShare "><i class="icon desktop"></i></a>
+                <a title="开关录制" class="btn btn-icon right J-toggleRecord "><i class="icon record"></i></a>
+            </div>
+            <div class="btn-option">
+                <p>
+                    <span class="desc">当前背景音乐:</span>
+                    <span class="desc J-rtc-file-name"></span>
+                </p>
+                
+                
+            </div>
+            <div class="btn-option">
+                <a class="btn btn-effect J-rtc-effect1">效果1</a>
+                <a class="btn btn-effect J-rtc-effect2">效果2</a>
+                <a class="btn btn-effect J-rtc-effect3">效果3</a>
+                <a class="btn btn-effect J-rtc-effect4">效果4</a>
+                <a class="btn btn-effect J-rtc-effect5">效果5</a>
+            </div>
         </div>
     </div>
-    <% include ../layout/snip.html %>
+    
 </div>
-
+<% include ../layout/snip.html %>
 <% include ../layout/footer.html %>

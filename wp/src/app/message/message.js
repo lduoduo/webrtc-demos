@@ -6,7 +6,7 @@
 // 引入样式文件
 import './message.scss';
 
-let serverIp = MY.environment === 'dev' ? `${window.location.hostname}:${MY.wsPort}` : window.location.hostname
+let serverWs = MY.environment === 'dev' ? `${window.location.hostname}:${MY.wsPort}` : window.location.hostname
 
 window.home = {
     // 显示远程的列表
@@ -93,7 +93,7 @@ window.home = {
 
         let stream = this.localStream
 
-        let url = `wss://${serverIp}/rtcWs`;
+        let url = `wss://${serverWs}/rtcWs`;
 
         let rtc = this.rtc = new rtcSDK();
         rtc.init({ url, roomId: cname, stream }).then(obj => {

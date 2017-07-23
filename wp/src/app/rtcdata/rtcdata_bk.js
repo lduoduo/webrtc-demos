@@ -5,7 +5,7 @@ import './rtcdata.less';
 let $localVideo = document.querySelector('.J-local-video');
 let $remoteVideo = document.querySelector('.J-remote-video');
 
-let serverIp = MY.environment === 'dev' ?  window.location.hostname + ':8099' : window.location.hostname
+let serverWs = MY.environment === 'dev' ?  window.location.hostname + ':8099' : window.location.hostname
 
 window.home = {
     // 显示远程的列表
@@ -315,7 +315,7 @@ window.home = {
 
         let stream = this.localStream
 
-         let url = `wss://${serverIp}/rtcWs`;
+         let url = `wss://${serverWs}/rtcWs`;
 
         let rtc = this.rtc = new rtcSDK();
         rtc.init({ url, roomId: cname, stream }).then(obj => {

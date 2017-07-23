@@ -8,7 +8,7 @@
     "start": "node server.js",
     "app": "webpack-dev-server --config wp.dev.js --open --inline --hot --colors",
     "dev": "node copy.js && webpack --config wp.dev.js",
-    "build": "webpack --config wp.prd.js && node copy.js",
+    "build": "webpack --config wp.prd.js && node copy.js && webpack --config wp.sdk.js",
     "sdk": "webpack --config wp.sdk.js"
   },
   "devDependencies": {
@@ -40,6 +40,7 @@
     "sass-loader": "^6.0.3",
     "sdp-transform": "^2.3.0",
     "style-loader": "^0.13.2",
+    "tinypng-webpack-plugin": "^0.1.0",
     "url-loader": "^0.5.8",
     "webpack": "^2.2.1",
     "webpack-dev-server": "^2.4.1",

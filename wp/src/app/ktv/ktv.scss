@@ -1,3 +1,223 @@
-body{
-    // background-image: url('../../img/ktv.png')
+.rtc-main {
+    min-height: 100vh;
+    .rtc-btn-box {
+        position: absolute;
+        right: 0;
+        top: 0;
+        z-index: 11;
+        padding: 10px;
+        margin: 10px; // background: hsla(0, 0%, 100%, 0.3);
+        input {
+            text-align: center;
+        }
+    }
+}
+
+.rtc-media,
+canvas,
+.video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
+    width: 100vw;
+    height: 100vh;
+}
+
+.rtc-media {
+    margin: 0 !important;
+    z-index: 1;
+    .play {
+        position: absolute;
+        background: rgba(255, 255, 255, 0.1);
+        width: 30vmin;
+        height: 30vmin;
+        overflow: hidden;
+        top: 40%;
+        left: 50%;
+        margin-left: -15vmin;
+        margin-top: -15vmin;
+        cursor: pointer;
+        -webkit-transition: all 1s linear;
+        transition: all 1s linear;
+        border-radius: 50%;
+        z-index: 11;
+        &:before {
+            background: url('../../img/play.png') no-repeat;
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0px;
+            left: 0;
+            background-size: 110%;
+            background-position: -1.2vmin -1.4vmin;
+        }
+        &:after {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 20%;
+            left: 0;
+            z-index: -1;
+            background: url('../../img/bg.png') no-repeat;
+            background-size: 100%;
+        }
+        &.active {
+            animation: rotate-animation 4s linear infinite forwards;
+        }
+        &.video {
+            left: calc(100vw - 12vmin);
+            top: 150px;
+            width: 10vmin;
+            height: 10vmin;
+            margin-left: 0;
+            margin-top: 0;
+            &:before {
+                background-position: -0.4vmin -0.4vmin;
+            }
+        }
+    }
+    .video {
+        overflow: hidden;
+    }
+    video {
+        background: none;
+        display: none;
+        opacity: 0.7;
+        &.active {
+            display: block;
+        }
+    }
+    canvas {}
+    .music-option {
+        text-align: left;
+        padding: 0 10px;
+        display: inline-block;
+        z-index: 111;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        max-width: 500px;
+        background-color: rgba(255, 255, 255, 0.2);
+        .btn-effect {
+            background: rgba(255, 255, 255, 0.8);
+            width: 10vmin;
+            height: 10vmin;
+            border-radius: 50%;
+            padding: 4% 0;
+            box-sizing: border-box;
+            margin: 0 5px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .desc {
+            max-width: 70%;
+            display: inline-block;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+            vertical-align: middle;
+            font-size: 2vmin;
+        }
+    }
+}
+
+.icon {
+    display: inline-block;
+    width: 5vmin;
+    height: 5vmin;
+    max-width: 30px;
+    max-height: 30px;
+    background-size: 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+    opacity: 0.2;
+    &:after {
+        content: '';
+        display: block;
+        width: 140%;
+        height: 3px;
+        background: #2b2b2b;
+        opacity: 1;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, 0) rotate(-45deg);
+    }
+    &.browser {
+        background-image: url('../../img/icon-browser.png');
+    }
+    &.mic {
+        background-image: url('../../img/icon-mic.png');
+    }
+    &.volume {
+        background-image: url('../../img/icon-volume.png');
+    }
+    &.camera {
+        background-image: url('../../img/icon-camera.png');
+    }
+    &.camera-switch {
+        background-image: url('../../img/icon-camera-switch.png');
+    }
+    &.desktop {
+        background-image: url('../../img/icon-desktop.png');
+    }
+    &.music {
+        background-image: url('../../img/icon-music.png');
+    }
+    &.record {
+        &:before {
+            content: '';
+            display: block;
+            width: 80%;
+            height: 80%;
+            background: #d43e3e;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            margin-left: -40%;
+            margin-top: -40%;
+            border-radius: 50%;
+        }
+    }
+}
+
+.btn.btn-icon {
+    padding: 10px;
+    line-height: 0;
+    background: rgba(247, 247, 247, 0.4);
+    border-radius: 50%;
+    &.active {
+        .icon {
+            opacity: 0.9;
+            &:after {
+                opacity: 0;
+            }
+            &:before {
+                border-radius: 0;
+                animation: rotate-animation 2s linear infinite forwards;
+            }
+        }
+    }
+}
+
+@keyframes rotate-animation {
+    0% {
+        transform: rotate(0deg);
+    }
+    25% {
+        transform: rotate(90deg);
+    }
+    50% {
+        transform: rotate(180deg);
+    }
+    75% {
+        transform: rotate(270deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }

@@ -12,7 +12,7 @@ import './chat.scss';
 let $localVideo = document.querySelector('.J-local-video');
 let $remoteVideo = document.querySelector('.J-remote-video');
 
-let serverIp = MY.environment === 'dev' ? `${window.location.hostname}:${MY.wsPort}` : window.location.hostname
+let serverWs = MY.environment === 'dev' ? `${window.location.hostname}:${MY.wsPort}` : window.location.hostname
 
 window.home = {
     // 本地流
@@ -130,7 +130,7 @@ window.home = {
                 this.startLocalVideoStream()
                 this.updateRtcStream()
                 dom.html('关闭摄像头')
-                $('.J-switchCamera').toggleClass('hide', false)
+                $('.J-switchCamera').toggleClass('hide', stream.devices.video.length <= 1)
             }).catch(err => {
                 console.error(err)
                 let error = err.constructor === String ? err : typeof err === 'object' ? err.stack || err.message : JSON.stringify(err)
@@ -356,7 +356,7 @@ window.home = {
 
         let stream = this.localStream
 
-        let url = `wss://${serverIp}/rtcWs`;
+        let url = `wss://${serverWs}/rtcWs`;
 
         let rtc = this.rtc = new rtcSDK();
         rtc.init({ url, roomId: cname, stream, debug: this.isDebugEnable }).then(obj => {
