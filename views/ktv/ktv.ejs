@@ -30,12 +30,16 @@
                 <a title="开关录制" class="btn btn-icon right J-toggleRecord "><i class="icon record"></i></a>
             </div>
             <div class="btn-option">
-                <p>
-                    <span class="desc">当前背景音乐:</span>
-                    <span class="desc J-rtc-file-name"></span>
-                </p>
-                
-                
+                <span class="desc">当前背景音乐:</span>
+                <span class="desc J-rtc-file-name"></span>
+            </div>
+            <div class="btn-option">
+                <span class="desc">伴奏:</span>
+                <input type="range" min="0.1" max="2" step="0.1" value="1" data-type="muisc" class="J-volume-range"/>
+            </div>
+            <div class="btn-option">
+                <span class="desc">人声:</span>
+                <input type="range" min="0.1" max="10" step="0.5" value="1" data-type="voice" class="J-volume-range"/>
             </div>
             <div class="btn-option">
                 <a class="btn btn-effect J-rtc-effect1">效果1</a>

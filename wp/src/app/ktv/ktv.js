@@ -32,7 +32,9 @@ window.home = {
     local: {
         video: null,
         audio: null,
-        stream: null
+        stream: null,
+        // 混合伴奏的音频
+        remixAudio: null,
     },
     // 显示远程的列表
     remoteVideo: {},
@@ -44,16 +46,18 @@ window.home = {
             size: 0,
             receivedSize: 0
         }
-
     },
     // 是否开启debug弹框
     isDebugEnable: $('.J-tip-check').hasClass('active'),
     init() {
-        this.initBgMusic()
-        stream.init();
+
+        StreamOption.init();
         this.initEvent();
+        this.lazy()
     },
     initBgMusic(file) {
+        if(true) return 
+
         if (!window.mv) {
             window.mv = new MusicVisualizer();
             mv.ini({ canvas: $("#canvas")[0], context: window, isMobile: /(Android|IOS)/gi.test(platform.os.family) });
@@ -80,7 +84,10 @@ window.home = {
     // 音乐播放完毕的监听
     onMusicEnd() {
         console.log('music end')
-        this.initBgMusic();
+        // 如果当前没有在播，则换
+        if (mv.source.curr === mv.source.newUrl) {
+            this.initBgMusic();
+        }
     },
     initEvent() {
         let that = this
@@ -105,9 +112,25 @@ window.home = {
         // 录制开关
         $('body').on('click', '.J-toggleRecord', this.toggleRecord.bind(this))
 
+        // 音量控制
+        $('body').on('change', '.J-volume-range', this.volumeRange.bind(this))
 
         window.addEventListener('beforeunload', this.destroy.bind(this));
     },
+    // 延迟加载
+    lazy() {
+        lazyLoad(`${serverStatic}lib/musicPlug.js`, function () {
+            this.initBgMusic();
+            console.log('musicPlug done')
+        }.bind(this))
+        lazyLoad(`${serverStatic}lib/webAudio.js`, function () {
+            console.log('webAudio done')
+        }.bind(this))
+        lazyLoad(`${serverStatic}lib/mediaRecord.js`, function () {
+            console.log('mediaRecord done')
+        }.bind(this))
+    },
+    // 注销RTC
     destroy() {
         if (!this.rtc) return
         this.rtc.stop()
@@ -135,28 +158,59 @@ window.home = {
             mv.pause()
         }
     },
+    // 音量控制
+    volumeRange(e) {
+        let dom = $(e.target)
+        let type = dom.data('type')
+        let volume = dom.val()
+
+        // 改背景
+        if (type === 'muisc') {
+            mv.changeVolumn(volume);
+        }
+        // 改人声
+        if (type === 'voice') {
+            StreamOption.changeVolumn(volume);
+        }
+    },
     // 开关本地音频
     toggleAudio(e) {
         let dom = $('.J-toggleAudio')
         dom.toggleClass('active')
         if (dom.hasClass('active')) {
-            stream.startAudio()
+            StreamOption.startAudio()
             // dom.html('关试音(默认关)')
         } else {
-            stream.stopAudio()
+            StreamOption.stopAudio()
             // dom.html('开试音(默认关)')
         }
     },
     // 开关录制功能
     toggleRecord() {
         let dom = $('.J-toggleRecord')
-        dom.toggleClass('active')
-        if (dom.hasClass('active')) {
-            // stream.startAudio()
-            // dom.html('关试音(默认关)')
+
+        if (!dom.hasClass('active')) {
+            // 开始录制
+            this.startRecord().then(() => {
+                dom.toggleClass('active', true)
+            }).catch(err => {
+                Mt.alert({
+                    title: '录制错误',
+                    msg: err,
+                    confirmBtnMsg: '好哒'
+                })
+            })
         } else {
-            // stream.stopAudio()
-            // dom.html('开试音(默认关)')
+            // 开始录制
+            this.stopRecord().then(() => {
+                dom.toggleClass('active', false)
+            }).catch(err => {
+                Mt.alert({
+                    title: '停止录制错误',
+                    msg: err,
+                    confirmBtnMsg: '好哒'
+                })
+            })
         }
     },
     // 开关麦克风
@@ -164,7 +218,7 @@ window.home = {
         let dom = $('.J-toggleMic')
         if (!dom.hasClass('active')) {
 
-            stream.startDeviceAudio().then((obj) => {
+            StreamOption.startDeviceAudio().then((obj) => {
                 if (obj.video) this.local.video = obj.video
                 if (obj.audio) this.local.audio = obj.audio
                 this.updateRtcStream()
@@ -183,7 +237,7 @@ window.home = {
             })
 
         } else {
-            stream.stopDeviceAudio()
+            StreamOption.stopDeviceAudio()
             this.local.audio = new MediaStream()
             this.updateRtcStream()
             dom.toggleClass('active', false)
@@ -194,13 +248,13 @@ window.home = {
     toggleCam(e) {
         let dom = $('.J-toggleCam')
         if (!dom.hasClass('active')) {
-            stream.startDeviceVideo().then((obj) => {
+            StreamOption.startDeviceVideo().then((obj) => {
                 if (obj.video) this.local.video = obj.video
                 if (obj.audio) this.local.audio = obj.audio
                 this.startLocalVideoStream()
                 this.updateRtcStream()
                 dom.toggleClass('active', true)
-                $('.J-switchCamera').toggleClass('active', stream.devices.video.length > 1)
+                $('.J-switchCamera').toggleClass('active', StreamOption.devices.video.length > 1)
             }).catch(err => {
                 console.error(err)
                 let error = err.constructor === String ? err : typeof err === 'object' ? err.stack || err.message : JSON.stringify(err)
@@ -214,7 +268,7 @@ window.home = {
             })
         } else {
             this.stopLocalVideoStream()
-            stream.stopDeviceVideo()
+            StreamOption.stopDeviceVideo()
             this.local.video = new MediaStream()
             this.updateRtcStream()
             dom.toggleClass('active', false)
@@ -227,7 +281,7 @@ window.home = {
 
         let fn = !dom.hasClass('active') ? 'startScreenShare' : 'stopScreenShare'
 
-        stream[fn]('screen').then((obj) => {
+        StreamOption[fn]('screen').then((obj) => {
             if (obj.video) this.local.video = obj.video
             if (obj.audio) this.local.audio = obj.audio
             this.startLocalVideoStream()
@@ -258,7 +312,7 @@ window.home = {
                 confirmBtnMsg: '好哒'
             })
         }
-        stream.switchCamera().then((obj) => {
+        StreamOption.switchCamera().then((obj) => {
             if (obj.video) this.local.video = obj.video
             if (obj.audio) this.local.audio = obj.audio
             this.startLocalVideoStream()
@@ -305,8 +359,8 @@ window.home = {
     // 停止本地视频流外显
     stopLocalVideoStream() {
         $('.J-play').toggleClass('video', false)
-
         $localVideo.classList.remove('active')
+
         if ($localVideo.srcObject === undefined) {
             $localVideo.src = null
         } else {
@@ -314,16 +368,38 @@ window.home = {
         }
     },
     updateLocalStream() {
+        let that = this;
         this.local.stream = new MediaStream();
 
         let videoTrack = this.local.video && this.local.video.getVideoTracks()[0]
-        let audioTrack = this.local.audio && this.local.audio.getAudioTracks()[0]
-        // 添加视频
-        videoTrack && this.local.stream.addTrack(videoTrack)
+        let audioTrack = null
 
-        //添加音频
-        audioTrack && this.local.stream.addTrack(audioTrack)
+        // 混合音频轨道先
+        if (!this.remixWebAudio) {
+            return new webAudio([this.local.audio]).then((obj) => {
+                this.remixWebAudio = obj
+                this.remixAudio = obj.outputStream
+                audioTrack = this.remixAudio.getAudioTracks()[0]
+                next()
+                return Promise.resolve()
+            }).catch(err => {
+                console.error(err)
+            })
+        }
 
+        audioTrack = this.remixAudio.getAudioTracks()[0]
+
+        next()
+
+        return Promise.resolve()
+
+        function next() {
+            // 添加视频
+            videoTrack && that.local.stream.addTrack(videoTrack)
+
+            //添加音频
+            audioTrack && that.local.stream.addTrack(audioTrack)
+        }
     },
     // 更新RTC流
     updateRtcStream() {
@@ -335,13 +411,50 @@ window.home = {
 
         this.rtc.updateStream(this.local.stream)
     },
-
     // 选择伴奏
     selectedFile() {
         let fileInput = document.querySelector('input#fileInput')
         let file = fileInput.files[0]
         if (!file) return
         this.initBgMusic(file)
+    },
+    // 开始录制
+    startRecord() {
+        if (this.recorder) return Promise.reject('当前正在录制中')
+
+        if (!this.local.stream) {
+            return this.updateLocalStream().then(() => {
+                if (!this.local.stream) {
+                    return Promise.reject('当前没有音视频数据，无法进行录制')
+                }
+                this.startRecord()
+            })
+        }
+
+        let streams = this.local.stream
+
+        return new MR(streams)
+            .then(obj => {
+                this.recorder = obj
+                return Promise.resolve()
+            })
+            .catch(err => {
+                return Promise.reject(err)
+            })
+    },
+    // 停止录制
+    stopRecord() {
+        let recorder = this.recorder
+        if (!recorder) return Promise.reject('请先开启音视频录制')
+
+        return recorder.stop()
+            .then(obj => {
+                this.recorder = null
+                return Promise.resolve()
+            })
+            .catch(err => {
+                return Promise.reject(err)
+            })
     },
     /** 
      * 开启rtc连接
@@ -433,10 +546,17 @@ window.home = {
             confirmBtnMsg: '好哒'
         });
         console.log(`远程用户已断开: `, uid)
+    },
+    test(){
+        var a = document.createElement('audio')
+        a.controls = true
+        a.srcObject = mv.destination.stream;
+        document.body.appendChild(a)
     }
 }
 
-let stream = {
+// 与设备相关
+let StreamOption = {
     browser: platform.name,
     isVideoEnable: false, //是否开启摄像头
     // 当前在使用摄像头的位置, 默认第一个
@@ -666,6 +786,12 @@ let stream = {
     // 停止播放声音
     stopAudio() {
         this.local.webAudio.pause()
+    },
+    // 改变音量
+    changeVolumn(volume) {
+        if (this.local.webAudio) {
+            this.local.webAudio.setGain(volume)
+        }
     }
 }
 

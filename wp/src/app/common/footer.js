@@ -12,6 +12,27 @@ window.onload = function () {
     // ajax.post('/data/updateLog', ERROR);
 }
 
+/**
+ * 延迟加载函数 js / css文件
+ * 
+ * @param {any} url 目标地址
+ * @param {any} cb 加载完成的回调
+ */
+window.lazyLoad = function(url,cb){
+    if(!url) return
+        let dom
+    // 加载css
+    if(/\.css$/.test(url)){
+        dom = document.createElement('style')
+        dom.href = url
+    }
+    if(/\.js$/.test(url)){
+        dom = document.createElement('script')
+        dom.src = url
+    }
+    dom.onload = cb || function(){}
+    document.body.appendChild(dom)
+}
 
 //弹窗插件配置
 window.Mt = {

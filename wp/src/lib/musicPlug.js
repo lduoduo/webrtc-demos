@@ -43,8 +43,9 @@ var MusicVisualizer = function () {
 
     this.gainNode.connect(this.analyser);
 
-    // this.destination = context.createMediaStreamDestination()
-    this.outputStream = MusicVisualizer.destination.stream
+    this.ac = MusicVisualizer.ac
+    this.destination = MusicVisualizer.destination
+    this.outputStream = this.destination.stream
 
     this.xhr = new XMLHttpRequest();
 }
@@ -126,6 +127,7 @@ MusicVisualizer.prototype = {
         var self = this;
         //兼容arraybuffer的方式，如果有，先停掉
         this.stop(true);
+
         return new Promise((resolve, reject) => {
             MusicVisualizer.ac.decodeAudioData(arraybuffer, function (buffer) {
 
@@ -143,6 +145,9 @@ MusicVisualizer.prototype = {
 
                 self.source.bs = bs;
                 bs.onended = self.onended.bind(self)
+
+                // 更新stream
+                self.outputStream = MusicVisualizer.destination.stream
 
                 resolve(self.source.newUrl)
 
@@ -212,6 +217,9 @@ MusicVisualizer.prototype = {
                     self.audio.play();
                 }
 
+                // 更新stream
+                self.outputStream = MusicVisualizer.destination.stream
+
                 self.source.curr = url;
 
             } else {
@@ -223,10 +231,14 @@ MusicVisualizer.prototype = {
         })
 
     },
+    
     // 播放完毕回调
     onended() {
-        this.emit('end')
+        if (this.source.curr === this.source.newUrl) {
+            this.emit('end')
+        }
     },
+
     //音量控制
     changeVolumn(percent) {
         this.gainNode.gain.value = percent * percent;
