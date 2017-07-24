@@ -155,7 +155,7 @@ var config = {
                 use: ["file-loader?name=resource/[name].[ext]"]
             },
             {
-                test: /\.(mp3|m4a|m4r)$/,
+                test: /\.(mp3|m4a|m4r|wav)$/,
                 use: ["file-loader?name=media/[name].[ext]"]
             }
         ]

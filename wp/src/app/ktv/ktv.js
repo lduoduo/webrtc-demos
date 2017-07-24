@@ -7,7 +7,7 @@
 // 引入样式文件
 import './ktv.scss';
 
-// 引入资源
+// 引入资源, 背景音乐
 require('../../media/cs1.mp3')
 require('../../media/cs2.mp3')
 require('../../media/cs3.mp3')
@@ -18,6 +18,14 @@ require('../../media/cs7.mp3')
 require('../../media/cs8.mp3')
 require('../../media/cs9.mp3')
 require('../../media/cs10.mp3')
+
+// 引入资源, 效果器
+require('../../media/e_echo.wav')
+require('../../media/e_muffler.wav')
+require('../../media/e_radio.wav')
+require('../../media/e_spring.wav')
+require('../../media/e_telephone.wav')
+
 
 // 音视频画面容器
 let $localVideo = document.querySelector('.J-local-video');
@@ -54,7 +62,9 @@ window.home = {
         StreamOption.init();
         this.initEvent();
         this.lazy()
+
     },
+    // 初始化背景音乐
     initBgMusic(file) {
         // if(true) return 
 
@@ -80,7 +90,23 @@ window.home = {
         // mv.play({ url: `${serverStatic}media/data.mp3` });
 
     },
-
+    // 加载效果器
+    loadEffect() {
+        webAudio.prototype.loadEffect([
+            `${MY.frontUrl}media/e_echo.wav`,
+            `${MY.frontUrl}media/e_muffler.wav`,
+            `${MY.frontUrl}media/e_radio.wav`,
+            `${MY.frontUrl}media/e_spring.wav`,
+            `${MY.frontUrl}media/e_telephone.wav`
+        ]).then(obj => {
+            var html = ""
+            obj.forEach((name, index) => {
+                html += `<a class="btn btn-effect J-audio-effect" data-type="${name}">效果${index + 1}</a>`
+            })
+            $('.J-effects').html(html)
+            // console.log(obj)
+        })
+    },
     // 音乐播放完毕的监听
     onMusicEnd() {
         console.log('music end')
@@ -89,6 +115,7 @@ window.home = {
             this.initBgMusic();
         }
     },
+    // 事件注册
     initEvent() {
         let that = this
         $('body').on('click', '.J-start', this.startRTC.bind(this))
@@ -115,6 +142,9 @@ window.home = {
         // 音量控制
         $('body').on('change', '.J-volume-range', this.volumeRange.bind(this))
 
+        // 效果选择
+        $('body').on('click', '.J-audio-effect', this.audioEffect.bind(this))
+
         window.addEventListener('beforeunload', this.destroy.bind(this));
     },
     // 延迟加载
@@ -122,6 +152,7 @@ window.home = {
 
         lazyLoad(`${serverStatic}lib/webAudio.js`).then(() => {
             console.log('webAudio done')
+            this.loadEffect()
             return lazyLoad(`${serverStatic}lib/musicPlug.js`)
         }).then(() => {
             console.log('musicPlug done')
@@ -380,7 +411,7 @@ window.home = {
 
         // 混合音频轨道先
         if (!this.remixWebAudio) {
-            return new webAudio([this.local.audio]).then((obj) => {
+            return new webAudio({ stream: [this.local.audio] }).then((obj) => {
                 this.remixWebAudio = obj
                 this.remixAudio = obj.outputStream
                 audioTrack = this.remixAudio.getAudioTracks()[0]
@@ -459,6 +490,13 @@ window.home = {
             .catch(err => {
                 return Promise.reject(err)
             })
+    },
+    // 选择效果
+    audioEffect(e) {
+        let dom = $(e.target)
+        let type = dom.data('type')
+        StreamOption.audioEffect(type)
+        dom.addClass('active').siblings().removeClass('active')
     },
     /** 
      * 开启rtc连接
@@ -777,7 +815,7 @@ window.StreamOption = {
         }
 
         // 格式化音频
-        return new webAudio(this.local.audioStream).then((obj) => {
+        return new webAudio({ stream: this.local.audioStream, effect: this.local.effect }).then((obj) => {
             this.local.webAudio = obj
             this.local.audio = obj.outputStream
             return Promise.resolve({ audio: this.local.audio, video: this.local.video })
@@ -796,6 +834,13 @@ window.StreamOption = {
         if (this.local.webAudio) {
             this.local.webAudio.setGain(volume)
         }
+    },
+    // 人声效果选择
+    audioEffect(type) {
+        if (!this.local.webAudio) {
+            return this.local.effect = type
+        }
+        this.local.webAudio.audioEffect(type)
     }
 }
 

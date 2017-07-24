@@ -1,4 +1,4 @@
-input[type='range']{
+input[type='range'] {
     width: 80%;
     border-radius: 5px;
 }
@@ -107,7 +107,7 @@ canvas,
         max-width: 500px;
         background-color: rgba(255, 255, 255, 0.2);
         .btn-effect {
-            background: rgba(255, 255, 255, 0.8);
+            background: rgba(97, 111, 154, 0.3);
             width: 10vmin;
             height: 10vmin;
             border-radius: 50%;
@@ -116,6 +116,9 @@ canvas,
             margin: 0 5px;
             text-align: center;
             font-size: 0.9rem;
+            &.active {
+                box-shadow: inset 2px 2px 25px #6c8db3
+            }
         }
         .desc {
             max-width: 70%;
@@ -196,6 +199,24 @@ canvas,
     line-height: 0;
     background: rgba(247, 247, 247, 0.4);
     border-radius: 50%;
+    position: relative;
+    &:after {
+        content: attr(title);
+        display: none;
+        /* width: 100px; */
+        line-height: 2;
+        background: rgba(247, 247, 247, 0.4);
+        position: absolute;
+        top: -80%;
+        left: 50%;
+        padding: 5px;
+        white-space: nowrap;
+        transform: translate(-50%, -50%);
+        border-radius: 10px;
+    }
+    &:hover:after {
+        display: block;
+    }
     &.active {
         .icon {
             opacity: 0.9;
