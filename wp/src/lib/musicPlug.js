@@ -88,6 +88,7 @@ MusicVisualizer.prototype = {
      * @param {object} option.context 挂载对象,一般为window
      * @param {boolean} option.isMobile 是否移动设备
      * @param {num} option.volumnId 初始化音量
+     * @param {array} option.urlList 需要缓存的音乐列表
      */
     ini(option) {
         option = option || {}
@@ -104,8 +105,26 @@ MusicVisualizer.prototype = {
         this.volumnId = volumnId;
         this.isMobile = isMobile || false
         this.visualizer();
-    },
 
+        return Promise.resolve()
+    },
+    // 缓存列表,一首一首的缓存
+    loadList(urlList) {
+        this.urlList = urlList
+        this.nameList = [];
+        this.loadBuffer()
+    },
+    loadBuffer() {
+        var that = this
+        if (this.urlList.length === 0) return
+        var index = Math.floor(Math.random() * this.urlList.length)
+        var url = this.urlList.splice(index, 1)[0]
+        webAudio.prototype.loadBuffer(url).then((list) => {
+            that.nameList = that.nameList.concat(list)
+            that.emit('playlist', that.nameList)
+            that.loadBuffer()
+        })
+    },
     //异步加载音乐url，接收arraybuffer数据流
     load(xhr, url, cb) {
         var self = this;
@@ -130,27 +149,8 @@ MusicVisualizer.prototype = {
 
         return new Promise((resolve, reject) => {
             webAudio.ac.decodeAudioData(arraybuffer, function (buffer) {
-
-                self.source.curr = self.source.newUrl;
-                var bs = webAudio.ac.createBufferSource();
-                bs.buffer = buffer;
-                // bs.loop = true;
-
-                if (/(resumed|played)/.test(self.playStatus)) {
-                    bs.connect(self.gainNode);
-                }
-
-                //兼容较老的API
-                bs[bs.start ? "start" : "noteOn"](0);
-
-                self.source.bs = bs;
-                bs.onended = self.onended.bind(self)
-
-                // 更新stream
-                self.outputStream = webAudio.destination.stream
-
-                resolve(self.source.newUrl)
-
+                self.playBuffer(buffer)
+                resolve()
             }, function (err) {
                 console.log('err:' + err);
                 reject('文件类型不合法, 请选择音乐格式的文件')
@@ -158,11 +158,36 @@ MusicVisualizer.prototype = {
         })
     },
 
+    // 播放audiobuffer
+    playBuffer(buffer) {
+        var self = this;
+
+        self.source.curr = self.source.newUrl;
+        var bs = webAudio.ac.createBufferSource();
+        bs.buffer = buffer;
+        // bs.loop = true;
+
+        if (/(resumed|played)/.test(self.playStatus)) {
+            bs.connect(self.gainNode);
+        }
+
+        //兼容较老的API
+        bs[bs.start ? "start" : "noteOn"](0);
+
+        self.source.bs = bs;
+        bs.onended = self.onended.bind(self)
+
+        // 更新stream
+        self.outputStream = webAudio.destination.stream
+
+        return Promise.resolve(self.source.newUrl)
+    },
     /**
      * 播放url的歌曲，调用该方法可以实时换歌
-     * @param {object} option 
-     * @param {file} option.file 播放本地音频文件(input获取)
-     * @param {string} option.url 播放远程音频文件
+     * @param {object} option
+     * @param {file} option.file 播放本地音频文件(input获取):优先1
+     * @param {string} option.url 播放远程音频文件 优先级3
+     * @param {string} option.name 播放缓存数据 优先2
      * @returns 
      */
     play(option) {
@@ -170,6 +195,7 @@ MusicVisualizer.prototype = {
         option = option || {}
 
         return new Promise((resolve, reject) => {
+
             // 如果是播放本地文件
             if (option.file && option.file.constructor === File) {
                 self.source.newUrl = option.file.name
@@ -185,6 +211,13 @@ MusicVisualizer.prototype = {
                 return
             }
 
+            // 如果是播放缓存
+            if (option.name && webAudio.prototype.bufferList[option.name]) {
+                self.source.newUrl = option.name
+                return self.playBuffer(webAudio.prototype.bufferList[option.name])
+            }
+
+            // 播放远程音源
             var url = option.url
 
             if (self.source.curr && self.source.curr == url) {

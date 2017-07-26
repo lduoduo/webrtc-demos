@@ -18,6 +18,21 @@ require('../../media/cs7.mp3')
 require('../../media/cs8.mp3')
 require('../../media/cs9.mp3')
 require('../../media/cs10.mp3')
+require('../../media/cs11.mp3')
+require('../../media/cs12.mp3')
+require('../../media/cs13.mp3')
+require('../../media/cs14.mp3')
+require('../../media/cs15.mp3')
+require('../../media/cs16.mp3')
+require('../../media/cs17.mp3')
+require('../../media/cs18.mp3')
+require('../../media/cs19.mp3')
+require('../../media/cs20.mp3')
+
+//test
+require('../../media/data.mp3')
+require('../../media/test.mp3')
+
 
 // 引入资源, 效果器
 require('../../media/e_echo.wav')
@@ -26,6 +41,30 @@ require('../../media/e_radio.wav')
 require('../../media/e_spring.wav')
 require('../../media/e_telephone.wav')
 
+let musicList = [
+    `${MY.frontUrl}media/cs1.mp3`,
+    `${MY.frontUrl}media/cs2.mp3`,
+    `${MY.frontUrl}media/cs3.mp3`,
+    `${MY.frontUrl}media/cs4.mp3`,
+    `${MY.frontUrl}media/cs5.mp3`,
+    `${MY.frontUrl}media/cs6.mp3`,
+    `${MY.frontUrl}media/cs7.mp3`,
+    `${MY.frontUrl}media/cs8.mp3`,
+    `${MY.frontUrl}media/cs9.mp3`,
+    `${MY.frontUrl}media/cs10.mp3`,
+    `${MY.frontUrl}media/cs11.mp3`,
+    `${MY.frontUrl}media/cs12.mp3`,
+    `${MY.frontUrl}media/cs13.mp3`,
+    `${MY.frontUrl}media/cs14.mp3`,
+    `${MY.frontUrl}media/cs15.mp3`,
+    `${MY.frontUrl}media/cs16.mp3`,
+    `${MY.frontUrl}media/cs17.mp3`,
+    `${MY.frontUrl}media/cs18.mp3`,
+    `${MY.frontUrl}media/cs19.mp3`,
+    `${MY.frontUrl}media/cs20.mp3`
+    // `${MY.frontUrl}media/data.mp3`,
+    // `${MY.frontUrl}media/test.mp3`
+]
 
 // 音视频画面容器
 let $localVideo = document.querySelector('.J-local-video');
@@ -64,41 +103,103 @@ window.home = {
         this.lazy()
 
     },
+    // 初始化webAudio环境,该环境融合背景音乐和voice人声
+    initWebAudio() {
+        let that = this
+
+        return new webAudio({ needMediaStream: true }).then((obj) => {
+            this.webAudio = obj
+            this.initWebAudioEvent()
+            return Promise.resolve()
+        }).catch(err => {
+            console.error(err)
+            if (err === 'captureStream undefined') {
+                alert()
+            }
+            return Promise.reject(err)
+        })
+
+        function alert(retry) {
+            var html = `请先开启chrome实验功能<br>手动复制下方连接至新窗口,设置为开启状态并重启chrome<br><br><br>
+                        <p style="font-size:18px;background:#ddd;">
+                            chrome://flags/#enable-experimental-web-platform-features
+                        </p>`
+            Mt.alert({
+                type: 'error',
+                title: 'WebAudio播放环境启动失败',
+                msg: html,
+                html: true,
+                confirmBtnMsg: '设置好了，请手动重启chrome',
+                cb: function () {
+                    // Mt.close()
+                    that.initWebAudio()
+                }
+            })
+        }
+    },
+    // 初始化webAudio事件
+    initWebAudioEvent() {
+        let webAudio = this.webAudio
+        webAudio.startVisualizer($('.J-rtc-media')[0])
+        webAudio.on('end', this.onMusicEnd.bind(this))
+        webAudio.on('outputStream', this.onMusicStream.bind(this))
+        webAudio.on('playlist', function (obj) {
+            // console.log('playlist',obj)
+            this.playlist = obj
+        }.bind(this))
+    },
     // 初始化背景音乐
     initBgMusic(file) {
-        // if(true) return 
+        let option = { file }, name
+        let webAudio = this.webAudio
+        if (!webAudio) {
+            webAudio = this.webAudio = new webAudio()
+            webAudio.startVisualizer($('.J-rtc-media')[0])
 
-        if (!window.mv) {
-            window.mv = new MusicVisualizer();
-            mv.ini({ canvas: $("#canvas")[0], context: window, isMobile: /(Android|IOS)/gi.test(platform.os.family) });
-            mv.on('end', this.onMusicEnd.bind(this))
+            // webAudio.ini({
+            //     canvas: $("#canvas")[0],
+            //     context: window,
+            //     // isMobile: false,
+            //     isMobile: /(Android|IOS)/gi.test(platform.os.family)
+            // })
+
         }
-        let option = { file }, url
 
-        if (!file) {
-            let index = Math.floor(Math.random() * 10) + 1
-            option.url = `${serverStatic}media/cs${index}.mp3`
+        if (this.playlist) {
+            let index = Math.floor(Math.random() * this.playlist.length)
+            option.name = this.playlist[index]
         }
 
-        mv.play(option).then(data => {
+        if (!file && !this.playlist) {
+            let index = Math.floor(Math.random() * (musicList.length - 1)) + 1
+            option.url = musicList[index]
+            //test
+            option.url = `${MY.frontUrl}media/data.mp3`
+        }
+
+        return webAudio.play(option).then(data => {
             $('.J-rtc-file-name').html(data)
-            console.log(data)
+            // console.log(data)
+            return Promise.resolve()
         }).catch(e => {
-            console.log('music play error')
-            this.initBgMusic();
+            console.log('music play error', e)
+            // return this.initBgMusic();
         });
-        // mv.play({ url: `${serverStatic}media/data.mp3` });
 
     },
     // 加载效果器
     loadEffect() {
-        webAudio.prototype.loadEffect([
-            `${MY.frontUrl}media/e_echo.wav`,
-            `${MY.frontUrl}media/e_muffler.wav`,
-            `${MY.frontUrl}media/e_radio.wav`,
-            `${MY.frontUrl}media/e_spring.wav`,
-            `${MY.frontUrl}media/e_telephone.wav`
-        ]).then(obj => {
+        this.webAudio.loadMusicList({
+            urls: [
+                `${MY.frontUrl}media/e_echo.wav`,
+                `${MY.frontUrl}media/e_muffler.wav`,
+                `${MY.frontUrl}media/e_radio.wav`,
+                `${MY.frontUrl}media/e_spring.wav`,
+                `${MY.frontUrl}media/e_telephone.wav`
+            ],
+            isAll: true
+        }).then(obj => {
+            this.effectlist = obj
             var html = ""
             obj.forEach((name, index) => {
                 html += `<a class="btn btn-effect J-audio-effect" data-type="${name}">效果${index + 1}</a>`
@@ -107,13 +208,21 @@ window.home = {
             // console.log(obj)
         })
     },
+    // 音乐输出流监听
+    onMusicStream(stream) {
+        console.log('outputStream changed', stream, stream.getTracks())
+        console.log('webAudio outputStream', this.webAudio.outputStream)
+        if (!this.testAudioNode) {
+            home.test()
+            return
+        }
+        this.testAudioNode.srcObject = stream
+    },
     // 音乐播放完毕的监听
     onMusicEnd() {
         console.log('music end')
         // 如果当前没有在播，则换
-        if (mv.source.curr === mv.source.newUrl) {
-            this.initBgMusic();
-        }
+        this.initBgMusic();
     },
     // 事件注册
     initEvent() {
@@ -152,14 +261,18 @@ window.home = {
 
         lazyLoad(`${serverStatic}lib/webAudio.js`).then(() => {
             console.log('webAudio done')
-            this.loadEffect()
-            return lazyLoad(`${serverStatic}lib/musicPlug.js`)
+            return this.initWebAudio()
         }).then(() => {
-            console.log('musicPlug done')
-            return lazyLoad(`${serverStatic}lib/mediaRecord.js`)
-        }).then(() => {
-            this.initBgMusic()
-        })
+            this.initBgMusic().then(() => {
+                // 加载效果器
+                this.loadEffect();
+
+                // 第一次缓存
+                if (!this.playlist) {
+                    this.webAudio.loadMusicList({ urls: musicList })
+                }
+            })
+        }).catch(err => { })
 
         lazyLoad(`${serverStatic}lib/mediaRecord.js`).then(() => {
             console.log('mediaRecord done')
@@ -188,9 +301,9 @@ window.home = {
     togglePlay() {
         $('.J-play').toggleClass('active')
         if ($('.J-play').hasClass('active')) {
-            mv.resume()
+            this.webAudio.resume()
         } else {
-            mv.pause()
+            this.webAudio.pause()
         }
     },
     // 音量控制
@@ -590,9 +703,9 @@ window.home = {
         console.log(`远程用户已断开: `, uid)
     },
     test() {
-        var a = document.createElement('audio')
+        var a = this.testAudioNode = document.createElement('audio')
         a.controls = true
-        a.srcObject = webAudio.destination.stream
+        a.srcObject = this.webAudio.outputStream
         document.body.appendChild(a)
     }
 }
