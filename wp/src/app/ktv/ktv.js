@@ -31,7 +31,7 @@ require('../../media/cs20.mp3')
 
 //test
 require('../../media/data.mp3')
-require('../../media/test.mp3')
+require('../../media/welcome.m4a')
 
 
 // 引入资源, 效果器
@@ -42,28 +42,28 @@ require('../../media/e_spring.wav')
 require('../../media/e_telephone.wav')
 
 let musicList = [
-    `${MY.frontUrl}media/cs1.mp3`,
-    `${MY.frontUrl}media/cs2.mp3`,
-    `${MY.frontUrl}media/cs3.mp3`,
-    `${MY.frontUrl}media/cs4.mp3`,
-    `${MY.frontUrl}media/cs5.mp3`,
-    `${MY.frontUrl}media/cs6.mp3`,
-    `${MY.frontUrl}media/cs7.mp3`,
-    `${MY.frontUrl}media/cs8.mp3`,
-    `${MY.frontUrl}media/cs9.mp3`,
-    `${MY.frontUrl}media/cs10.mp3`,
-    `${MY.frontUrl}media/cs11.mp3`,
-    `${MY.frontUrl}media/cs12.mp3`,
-    `${MY.frontUrl}media/cs13.mp3`,
-    `${MY.frontUrl}media/cs14.mp3`,
-    `${MY.frontUrl}media/cs15.mp3`,
-    `${MY.frontUrl}media/cs16.mp3`,
-    `${MY.frontUrl}media/cs17.mp3`,
-    `${MY.frontUrl}media/cs18.mp3`,
-    `${MY.frontUrl}media/cs19.mp3`,
-    `${MY.frontUrl}media/cs20.mp3`
-    // `${MY.frontUrl}media/data.mp3`,
-    // `${MY.frontUrl}media/test.mp3`
+    // `${MY.frontUrl}media/cs1.mp3`,
+    // `${MY.frontUrl}media/cs2.mp3`,
+    // `${MY.frontUrl}media/cs3.mp3`,
+    // `${MY.frontUrl}media/cs4.mp3`,
+    // `${MY.frontUrl}media/cs5.mp3`,
+    // `${MY.frontUrl}media/cs6.mp3`,
+    // `${MY.frontUrl}media/cs7.mp3`,
+    // `${MY.frontUrl}media/cs8.mp3`,
+    // `${MY.frontUrl}media/cs9.mp3`,
+    // `${MY.frontUrl}media/cs10.mp3`,
+    // `${MY.frontUrl}media/cs11.mp3`,
+    // `${MY.frontUrl}media/cs12.mp3`,
+    // `${MY.frontUrl}media/cs13.mp3`,
+    // `${MY.frontUrl}media/cs14.mp3`,
+    // `${MY.frontUrl}media/cs15.mp3`,
+    // `${MY.frontUrl}media/cs16.mp3`,
+    // `${MY.frontUrl}media/cs17.mp3`,
+    // `${MY.frontUrl}media/cs18.mp3`,
+    // `${MY.frontUrl}media/cs19.mp3`,
+    // `${MY.frontUrl}media/cs20.mp3`
+    `${MY.frontUrl}media/welcom.m4a`,
+    `${MY.frontUrl}media/test.m4r`
 ]
 
 // 音视频画面容器
@@ -107,9 +107,10 @@ window.home = {
     initWebAudio() {
         let that = this
 
-        return new webAudio({ needMediaStream: true }).then((obj) => {
+        return new webAudio().then((obj) => {
             this.webAudio = obj
-            this.initWebAudioEvent()
+            this.webAudio.startVisualizer($('.J-rtc-media')[0])
+            // this.initWebAudioEvent()
             return Promise.resolve()
         }).catch(err => {
             console.error(err)
@@ -137,34 +138,34 @@ window.home = {
             })
         }
     },
-    // 初始化webAudio事件
-    initWebAudioEvent() {
-        let webAudio = this.webAudio
-        webAudio.startVisualizer($('.J-rtc-media')[0])
-        webAudio.on('end', this.onMusicEnd.bind(this))
-        webAudio.on('outputStream', this.onMusicStream.bind(this))
-        webAudio.on('playlist', function (obj) {
+    // 初始化背景音乐环境
+    initMusicAudio() {
+        let that = this
+        return new webAudio({ needMediaStream: true }).then((obj) => {
+            this.musicAudio = obj
+            this.initMusicAudioEvent()
+            return Promise.resolve()
+        }).catch(err => {
+            console.error(err)
+            return Promise.reject(err)
+        })
+    },
+    // 初始化musicAudio事件
+    initMusicAudioEvent() {
+        let musicAudio = this.musicAudio
+        musicAudio.on('end', this.onMusicEnd.bind(this))
+        musicAudio.on('outputStream', this.onMusicStream.bind(this))
+        musicAudio.on('playlist', function (obj) {
             // console.log('playlist',obj)
             this.playlist = obj
         }.bind(this))
     },
-    // 初始化背景音乐
-    initBgMusic(file) {
+    // 播放远程背景音乐
+    playMusic(file) {
         let option = { file }, name
-        let webAudio = this.webAudio
-        if (!webAudio) {
-            webAudio = this.webAudio = new webAudio()
-            webAudio.startVisualizer($('.J-rtc-media')[0])
+        let musicAudio = this.musicAudio
 
-            // webAudio.ini({
-            //     canvas: $("#canvas")[0],
-            //     context: window,
-            //     // isMobile: false,
-            //     isMobile: /(Android|IOS)/gi.test(platform.os.family)
-            // })
-
-        }
-
+        console.log('play list', this.playlist)
         if (this.playlist) {
             let index = Math.floor(Math.random() * this.playlist.length)
             option.name = this.playlist[index]
@@ -174,18 +175,17 @@ window.home = {
             let index = Math.floor(Math.random() * (musicList.length - 1)) + 1
             option.url = musicList[index]
             //test
-            option.url = `${MY.frontUrl}media/data.mp3`
+            option.url = `${MY.frontUrl}media/welcome.m4a`
         }
 
-        return webAudio.play(option).then(data => {
+        return musicAudio.play(option).then(data => {
             $('.J-rtc-file-name').html(data)
             // console.log(data)
             return Promise.resolve()
         }).catch(e => {
             console.log('music play error', e)
-            // return this.initBgMusic();
+            // return this.playMusic();
         });
-
     },
     // 加载效果器
     loadEffect() {
@@ -211,18 +211,19 @@ window.home = {
     // 音乐输出流监听
     onMusicStream(stream) {
         console.log('outputStream changed', stream, stream.getTracks())
-        console.log('webAudio outputStream', this.webAudio.outputStream)
-        if (!this.testAudioNode) {
-            home.test()
-            return
-        }
-        this.testAudioNode.srcObject = stream
+        stream.type = 'music'
+        this.webAudio.updateStream({ type: 'music', stream })
+        // if (!this.testAudioNode) {
+        //     home.test()
+        //     return
+        // }
+        // this.testAudioNode.srcObject = stream
     },
     // 音乐播放完毕的监听
     onMusicEnd() {
         console.log('music end')
         // 如果当前没有在播，则换
-        this.initBgMusic();
+        this.playMusic();
     },
     // 事件注册
     initEvent() {
@@ -263,13 +264,15 @@ window.home = {
             console.log('webAudio done')
             return this.initWebAudio()
         }).then(() => {
-            this.initBgMusic().then(() => {
+            return this.initMusicAudio()
+        }).then(() => {
+            this.playMusic().then(() => {
                 // 加载效果器
                 this.loadEffect();
 
                 // 第一次缓存
                 if (!this.playlist) {
-                    this.webAudio.loadMusicList({ urls: musicList })
+                    this.musicAudio.loadMusicList({ urls: musicList })
                 }
             })
         }).catch(err => { })
@@ -301,9 +304,9 @@ window.home = {
     togglePlay() {
         $('.J-play').toggleClass('active')
         if ($('.J-play').hasClass('active')) {
-            this.webAudio.resume()
+            this.musicAudio.resume()
         } else {
-            this.webAudio.pause()
+            this.musicAudio.pause()
         }
     },
     // 音量控制
@@ -314,11 +317,11 @@ window.home = {
 
         // 改背景
         if (type === 'muisc') {
-            mv.changeVolumn(volume);
+            this.musicAudio.setGain(volume);
         }
         // 改人声
         if (type === 'voice') {
-            StreamOption.changeVolumn(volume);
+            this.webAudio.setGain(volume);
         }
     },
     // 开关本地音频
@@ -564,7 +567,7 @@ window.home = {
         let fileInput = document.querySelector('input#fileInput')
         let file = fileInput.files[0]
         if (!file) return
-        this.initBgMusic(file)
+        this.playMusic(file)
     },
     // 开始录制
     startRecord() {
@@ -705,7 +708,7 @@ window.home = {
     test() {
         var a = this.testAudioNode = document.createElement('audio')
         a.controls = true
-        a.srcObject = this.webAudio.outputStream
+        a.srcObject = this.musicAudio.outputStream
         document.body.appendChild(a)
     }
 }

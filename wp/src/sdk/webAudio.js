@@ -50,15 +50,17 @@
 * @param {array} [option.effect] 音频处理器,按照顺序处理: 值请参考 #webAudio.effect
 */
 
-var webAudio = function (option) {
+window.webAudio = function (option = {}) {
     this.support = support.supportWebAudio && support.supportMediaStream
 
     // 回调监听
     this.listeners = {}
     // 处理器节点
     this.nodeList = {}
+    // 是否需要输出stream
+    this.needMediaStream = option.needMediaStream || false
     // 初始音量
-    this.gain = 1
+    this.gain = this.needMediaStream ? 0.5 : 1
     // 音频dom节点
     this.audio = null
     // arraybuffer的源对象
@@ -70,9 +72,11 @@ var webAudio = function (option) {
     this.blob = null
     // arraybuffer转url的中间变量blobUrl, 当不再使用时, 需要释放
     this.blobUrl = null
-    this.needMediaStream = option.needMediaStream || false
+
     // 输出stream
     this.outputStream = null
+    // 目前写死mobile模式
+    this.isMobile = true
 
     if (!this.support) {
         return Promise.reject('webAudio not supported');
@@ -82,7 +86,17 @@ var webAudio = function (option) {
     //     return Promise.reject('no audio streams for webAudio');
     // }
 
-    this.audioIn = {}
+    // 人声输入
+    this.voiceIn = {
+        stream: null,
+        node: {}
+    }
+
+    // 伴音输入
+    this.musicIn = {
+        stream: null,
+        node: {}
+    }
 
     this.instant = 0.0
     this.slow = 0.0
@@ -229,7 +243,7 @@ webAudio.prototype = {
 
         // convolver.connect(destination)
     },
-    // 第三步：初始化音频输入
+    // 第三步：初始化音频输入, 不再使用
     _initAudioIn() {
         var that = this
         var stream = this.stream
@@ -279,6 +293,7 @@ webAudio.prototype = {
         this.audio.crossOrigin = 'anonymous';
 
         if (!this.audio.captureStream) return Promise.reject('captureStream undefined')
+        // if (this.needMediaStream) this.outputStream = this.audio.captureStream()
 
         this.source.es = this.context.createMediaElementSource(this.audio);
         this.source.es.connect(this.nodeList.gainNode);
@@ -297,6 +312,80 @@ webAudio.prototype = {
         }
 
         return Promise.resolve(this)
+    },
+    // 输入流更新
+    _updateInput(type) {
+        let that = this
+        let stream = this[`${type}In`].stream
+        let context = this.context
+        let tmp, nodes = this[`${type}In`].node
+
+        if (!stream) return
+        // 先销毁原始输入
+        for (let i in nodes) {
+            nodes[i].disconnect(0)
+        }
+
+        nodes = this[`${type}In`].node = {}
+
+        // 单路输入
+        if (/(MediaStream|LocalMediaStream)/.test(stream.constructor)) {
+            tmp = addMs(stream)
+            if (tmp) {
+                nodes[stream.id] = tmp
+            }
+            this._updateOutStream()
+            // this.outputStream = this.streamDestination.stream
+            return
+        }
+
+        // 多路输入
+        if (stream.constructor === Array) {
+            stream.forEach(item => {
+                if (!item || !/(MediaStream|LocalMediaStream)/.test(item)) return
+
+                tmp = addMs(item)
+                if (tmp) {
+                    nodes[item.id] = tmp
+                }
+            })
+            this._updateOutStream()
+            // this.outputStream = this.destination.stream
+        }
+
+        function addMs(ms) {
+            if (!/(MediaStream|LocalMediaStream)/.test(ms.constructor)) return null
+            if (ms.getAudioTracks().length === 0) return null
+            var audioIn = context.createMediaStreamSource(ms)
+
+            // 大坑问题！ script目前的代码是没有输出的，只作分析使用，所以source还要再连接一下下一个输出!
+            // if (that.isAnalyze && that.script) {
+            //     audioIn.connect(that.script)
+            //     that.script.connect(that.nodeList.gainNode)
+            // }
+
+            if (type === 'music' && that.nodeList.analyser) {
+                audioIn.connect(that.nodeList.analyser)
+            } else {
+                audioIn.connect(that.nodeList.gainNode)
+            }
+
+            return audioIn
+        }
+
+    },
+    /**
+     * 更新流 全部替换更新, 可以有多个输入
+     * @param {object} option 
+     * @param {string} option.type 类型, music / vioce, 默认是music
+     * @param {mediastream} option.stream 
+     */
+    updateStream(option) {
+        let { type, stream } = option
+
+        this[`${type}In`].stream = stream
+
+        this._updateInput(type)
     },
     /*****************************************输入节点相关 end******************************************** */
 
@@ -366,7 +455,7 @@ webAudio.prototype = {
         isAbort = isAbort || false
         var xhr
 
-        var name = url.match(/.(\w+)\.(wav|mp3)$/)
+        var name = url.match(/.(\w+)\.(wav|mp3|m4r|m4a)$/)
         name = name.length >= 2 ? name[1] : name[0]
 
         return new Promise((resolve, reject) => {
@@ -603,11 +692,30 @@ webAudio.prototype = {
         return Promise.resolve(this.source.newUrl)
     },
     // 核心API: 获取流数据
-    _updateOutStream(){
-        this.outputStream = this.audio.captureStream()
-        setTimeout(function(){
-            this.emit('outputStream', this.outputStream)
-        }.bind(this),300)
+    _updateOutStream() {
+        let that = this
+
+        if (this.needMediaStream) {
+            this.outputStream = this.audio.captureStream()
+        } else {
+
+        }
+
+        whenEmit()
+
+        function whenEmit() {
+            console.log('wait emit outputStream')
+            setTimeout(function () {
+                let stream = that.outputStream
+                if (!stream) return
+                if (stream.active) {
+                    that.emit('outputStream', stream)
+                    return
+                }
+                whenEmit()
+            }.bind(this), 300)
+        }
+
     },
     // 是否需要播放
     _canPlay() {

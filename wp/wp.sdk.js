@@ -39,7 +39,8 @@ var config = {
     target: "web",
     entry: {
         // rtcSDK: ["babel-polyfill", "./src/lib/rtcSDK.js"],
-        rtcSDK: "./src/sdk/rtcSDK.js"
+        rtcSDK: "./src/sdk/rtcSDK.js",
+        webAudio: "./src/sdk/webAudio.js"
     },
     output: {
         path: distPath,
