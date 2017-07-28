@@ -29,6 +29,15 @@ canvas,
     height: 100vh;
 }
 
+.remote-video{
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
+    width: 30vw;
+    height: 20vh;
+}
+
 .rtc-media {
     margin: 0 !important;
     z-index: 1;

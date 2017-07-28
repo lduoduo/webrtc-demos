@@ -287,7 +287,7 @@ rtcSDK.prototype = {
         }
 
         // 开启datachannel通道
-        this.dataChannel = rtcConnection.createDataChannel("ldodo", { negotiated: true, id: "ldodo" });
+        this.dataChannel = rtcConnection.createDataChannel("ldodo", { negotiated: true});
         this.onDataChannel(this.dataChannel);
 
         this.initPeerEvent();
@@ -584,12 +584,14 @@ rtcSDK.prototype = {
      */
     setLocalDescription(type, data) {
         let rtcConnection = this.rtcConnection
-        console.log(`${this.getDate()} setLocalDescription ${type}:\n`, data.sdp)
+        console.log(`${this.getDate()} setLocalDescription ${type}:\n`, sdpTransform.parse(data.sdp))
+        console.log(`\n`, data.sdp)
         return rtcConnection.setLocalDescription(new RTCSessionDescription(data))
     },
     setRemoteDescription(type, data) {
         let rtcConnection = this.rtcConnection
-        console.log(`${this.getDate()} setRemoteDescription ${type}:\n`, data.sdp)
+        console.log(`${this.getDate()} setRemoteDescription ${type}:\n`, sdpTransform.parse(data.sdp))
+        console.log(`\n`, data.sdp)
         return rtcConnection.setRemoteDescription(new RTCSessionDescription(data))
     },
     /** 将对方加入自己的候选者中 */
@@ -641,130 +643,6 @@ rtcSDK.prototype = {
     },
     /***************************************sdp协议的操作 end*************************************** */
     /***************************************媒体流的操作 start*************************************** */
-    // 实时更新媒体流
-    updateStream1(stream) {
-        if (!stream) return
-        if (stream.stream) stream = stream.stream
-
-        let isFirefox = !!navigator.mozGetUserMedia
-        let that = this
-        let rtcConnection = this.rtcConnection
-        var audioOld, videoOld, audio, video
-
-        audio = stream.getAudioTracks()[0]
-        video = stream.getVideoTracks()[0]
-
-        let tmp = rtcConnection.getLocalStreams()
-        tmp = tmp.length > 0 ? tmp[0] : null
-        console.log('当前rtc轨道数目', tmp, (tmp && tmp.getTracks().length))
-
-        // 第一次附加
-        if (!this.stream) {
-            this.stream = stream
-
-            // Firefox模式
-            if (isFirefox) {
-                this.rtcAudioTrack = audio ? rtcConnection.addTrack(audio, this.stream) : null
-                this.rtcVideoTrack = video ? rtcConnection.addTrack(video, this.stream) : null
-            } else {
-                this.rtcConnection.addStream(this.stream)
-            }
-
-            tmp = rtcConnection.getLocalStreams()
-            tmp = tmp.length > 0 ? tmp[0] : null
-            console.log('更新后rtc轨道数目', tmp, (tmp && tmp.getTracks().length))
-
-            if (this.rtcStatus === RTC_STATUS['connected']) {
-                this.createOffer()
-            }
-
-            window.myRtcStream = this.stream
-            return
-        }
-
-        // 先取所有轨道
-        audioOld = this.stream && this.stream.getAudioTracks()[0]
-        videoOld = this.stream && this.stream.getVideoTracks()[0]
-        audio = stream.getAudioTracks()[0]
-        video = stream.getVideoTracks()[0]
-
-        // 新加轨道
-        if (!audioOld) {
-            if (audio) {
-                // Firefox模式
-                if (isFirefox) {
-                    that.rtcAudioTrack = audio ? rtcConnection.addTrack(audio, this.stream) : null
-                } else {
-                    this.stream.addTrack(audio)
-                }
-            }
-        }
-
-        if (!videoOld) {
-            if (video) {
-                // Firefox模式
-                if (isFirefox) {
-                    this.rtcVideoTrack = video ? rtcConnection.addTrack(video, this.stream) : null
-                } else {
-                    this.stream.addTrack(video)
-                }
-            }
-        }
-
-        // 更新音频轨道
-        if (audioOld) {
-            // 移除轨道
-            if (!audio) {
-                if (isFirefox) {
-                    this.rtcAudioTrack && rtcConnection.removeTrack(this.rtcAudioTrack)
-                } else {
-                    this.stream.removeTrack(audioOld)
-                }
-            } else {
-                // 更新轨道
-                if (audio !== audioOld) {
-                    if (isFirefox) {
-                        this.rtcAudioTrack && rtcConnection.removeTrack(this.rtcAudioTrack)
-                        this.rtcAudioTrack = rtcConnection.addTrack(audio, this.stream)
-                    } else {
-                        this.stream.removeTrack(audioOld)
-                        this.stream.addTrack(audio)
-                    }
-                }
-            }
-        }
-
-        // 更新视频轨道
-        if (videoOld) {
-            // 移除轨道
-            if (!video) {
-                if (isFirefox) {
-                    this.rtcVideoTrack && rtcConnection.removeTrack(this.rtcVideoTrack)
-                } else {
-                    this.stream.removeTrack(videoOld)
-                }
-            } else {
-                // 更新轨道
-                if (video !== videoOld) {
-                    if (isFirefox) {
-                        this.rtcVideoTrack && rtcConnection.removeTrack(this.rtcVideoTrack)
-                        this.rtcVideoTrack = rtcConnection.addTrack(video, this.stream)
-                    } else {
-                        this.stream.removeTrack(videoOld)
-                        this.stream.addTrack(video)
-                    }
-                }
-            }
-        }
-
-        tmp = rtcConnection.getLocalStreams()
-        tmp = tmp.length > 0 ? tmp[0] : null
-        console.log('更新后rtc轨道数目', tmp, (tmp && tmp.getTracks().length))
-
-        if (this.rtcStatus === RTC_STATUS['connected']) {
-            this.createOffer()
-        }
-    },
     updateStream(stream) {
         if (!stream) return
         if (stream.stream) stream = stream.stream

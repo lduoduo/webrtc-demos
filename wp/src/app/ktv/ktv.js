@@ -31,7 +31,7 @@ require('../../media/cs20.mp3')
 
 //test
 require('../../media/data.mp3')
-require('../../media/welcome.m4a')
+require('../../media/secret.m4a')
 
 
 // 引入资源, 效果器
@@ -42,28 +42,28 @@ require('../../media/e_spring.wav')
 require('../../media/e_telephone.wav')
 
 let musicList = [
-    // `${MY.frontUrl}media/cs1.mp3`,
-    // `${MY.frontUrl}media/cs2.mp3`,
-    // `${MY.frontUrl}media/cs3.mp3`,
-    // `${MY.frontUrl}media/cs4.mp3`,
-    // `${MY.frontUrl}media/cs5.mp3`,
-    // `${MY.frontUrl}media/cs6.mp3`,
-    // `${MY.frontUrl}media/cs7.mp3`,
-    // `${MY.frontUrl}media/cs8.mp3`,
-    // `${MY.frontUrl}media/cs9.mp3`,
-    // `${MY.frontUrl}media/cs10.mp3`,
-    // `${MY.frontUrl}media/cs11.mp3`,
-    // `${MY.frontUrl}media/cs12.mp3`,
-    // `${MY.frontUrl}media/cs13.mp3`,
-    // `${MY.frontUrl}media/cs14.mp3`,
-    // `${MY.frontUrl}media/cs15.mp3`,
-    // `${MY.frontUrl}media/cs16.mp3`,
-    // `${MY.frontUrl}media/cs17.mp3`,
-    // `${MY.frontUrl}media/cs18.mp3`,
-    // `${MY.frontUrl}media/cs19.mp3`,
-    // `${MY.frontUrl}media/cs20.mp3`
-    `${MY.frontUrl}media/welcom.m4a`,
-    `${MY.frontUrl}media/test.m4r`
+    `${MY.frontUrl}media/cs1.mp3`,
+    `${MY.frontUrl}media/cs2.mp3`,
+    `${MY.frontUrl}media/cs3.mp3`,
+    `${MY.frontUrl}media/cs4.mp3`,
+    `${MY.frontUrl}media/cs5.mp3`,
+    `${MY.frontUrl}media/cs6.mp3`,
+    `${MY.frontUrl}media/cs7.mp3`,
+    `${MY.frontUrl}media/cs8.mp3`,
+    `${MY.frontUrl}media/cs9.mp3`,
+    `${MY.frontUrl}media/cs10.mp3`,
+    `${MY.frontUrl}media/cs11.mp3`,
+    `${MY.frontUrl}media/cs12.mp3`,
+    `${MY.frontUrl}media/cs13.mp3`,
+    `${MY.frontUrl}media/cs14.mp3`,
+    `${MY.frontUrl}media/cs15.mp3`,
+    `${MY.frontUrl}media/cs16.mp3`,
+    `${MY.frontUrl}media/cs17.mp3`,
+    `${MY.frontUrl}media/cs18.mp3`,
+    `${MY.frontUrl}media/cs19.mp3`,
+    `${MY.frontUrl}media/cs20.mp3`,
+    `${MY.frontUrl}media/secret.m4a`
+    // `${MY.frontUrl}media/test.m4r`
 ]
 
 // 音视频画面容器
@@ -98,10 +98,36 @@ window.home = {
     isDebugEnable: $('.J-tip-check').hasClass('active'),
     init() {
 
-        StreamOption.init();
         this.initEvent();
         this.lazy()
 
+    },
+    // 延迟加载
+    lazy() {
+
+        lazyLoad(`${serverStatic}lib/webAudio.js`).then(() => {
+            console.log('webAudio done')
+            return this.initWebAudio()
+        }).then(() => {
+
+            StreamOption.init(this.webAudio);
+            return this.initMusicAudio()
+        }).then(() => {
+            this.playMusic().then(() => {
+                // 加载效果器
+                this.loadEffect();
+                // 第一次缓存
+                if (!this.playlist) {
+                    this.musicAudio.loadMusicList({ urls: musicList })
+                }
+            })
+        }).catch(err => {
+            alert(JSON.stringify(err))
+        })
+
+        lazyLoad(`${serverStatic}lib/mediaRecord.js`).then(() => {
+            console.log('mediaRecord done')
+        })
     },
     // 初始化webAudio环境,该环境融合背景音乐和voice人声
     initWebAudio() {
@@ -110,23 +136,27 @@ window.home = {
         return new webAudio().then((obj) => {
             this.webAudio = obj
             this.webAudio.startVisualizer($('.J-rtc-media')[0])
+            // 初始化音频
+            this.local.stream = this.local.audio = this.webAudio.streamDestination.stream
             // this.initWebAudioEvent()
             return Promise.resolve()
         }).catch(err => {
             console.error(err)
             if (err === 'captureStream undefined') {
-                alert()
+                myAlert()
+            } else {
+                alert(JSON.stringify(err))
             }
+
             return Promise.reject(err)
         })
 
-        function alert(retry) {
-            var html = `请先开启chrome实验功能<br>手动复制下方连接至新窗口,设置为开启状态并重启chrome<br><br><br>
+        function myAlert(retry) {
+            var html = `请先开启chrome实验功能<br>手动复制下方连接至新窗口,设置为开启状态并重启chrome<br><br>
                         <p style="font-size:18px;background:#ddd;">
                             chrome://flags/#enable-experimental-web-platform-features
                         </p>`
             Mt.alert({
-                type: 'error',
                 title: 'WebAudio播放环境启动失败',
                 msg: html,
                 html: true,
@@ -143,10 +173,23 @@ window.home = {
         let that = this
         return new webAudio({ needMediaStream: true }).then((obj) => {
             this.musicAudio = obj
+            this.musicAudio.setGain(0)
             this.initMusicAudioEvent()
             return Promise.resolve()
         }).catch(err => {
             console.error(err)
+
+            Mt.alert({
+                title: 'WebAudio播放环境启动失败',
+                msg: JSON.stringify(err),
+                html: true,
+                confirmBtnMsg: '知道了',
+                cb: function () {
+                    // Mt.close()
+                    that.initWebAudio()
+                }
+            })
+
             return Promise.reject(err)
         })
     },
@@ -175,15 +218,25 @@ window.home = {
             let index = Math.floor(Math.random() * (musicList.length - 1)) + 1
             option.url = musicList[index]
             //test
-            option.url = `${MY.frontUrl}media/welcome.m4a`
+            option.url = `${MY.frontUrl}media/secret.m4a`
         }
 
         return musicAudio.play(option).then(data => {
             $('.J-rtc-file-name').html(data)
             // console.log(data)
             return Promise.resolve()
-        }).catch(e => {
-            console.log('music play error', e)
+        }).catch(err => {
+            console.log('music play error', err)
+            Mt.alert({
+                title: 'WebAudio播放环境启动失败',
+                msg: JSON.stringify(err),
+                html: true,
+                confirmBtnMsg: '知道了',
+                cb: function () {
+                    // Mt.close()
+                    that.initWebAudio()
+                }
+            })
             // return this.playMusic();
         });
     },
@@ -257,30 +310,7 @@ window.home = {
 
         window.addEventListener('beforeunload', this.destroy.bind(this));
     },
-    // 延迟加载
-    lazy() {
 
-        lazyLoad(`${serverStatic}lib/webAudio.js`).then(() => {
-            console.log('webAudio done')
-            return this.initWebAudio()
-        }).then(() => {
-            return this.initMusicAudio()
-        }).then(() => {
-            this.playMusic().then(() => {
-                // 加载效果器
-                this.loadEffect();
-
-                // 第一次缓存
-                if (!this.playlist) {
-                    this.musicAudio.loadMusicList({ urls: musicList })
-                }
-            })
-        }).catch(err => { })
-
-        lazyLoad(`${serverStatic}lib/mediaRecord.js`).then(() => {
-            console.log('mediaRecord done')
-        })
-    },
     // 注销RTC
     destroy() {
         if (!this.rtc) return
@@ -317,7 +347,7 @@ window.home = {
 
         // 改背景
         if (type === 'muisc') {
-            this.musicAudio.setGain(volume);
+            this.webAudio.setGain(volume, 'music');
         }
         // 改人声
         if (type === 'voice') {
@@ -368,11 +398,7 @@ window.home = {
     toggleMic(e) {
         let dom = $('.J-toggleMic')
         if (!dom.hasClass('active')) {
-
             StreamOption.startDeviceAudio().then((obj) => {
-                if (obj.video) this.local.video = obj.video
-                if (obj.audio) this.local.audio = obj.audio
-                this.updateRtcStream()
                 dom.toggleClass('active', true)
                 $('.J-toggleAudio').toggleClass('hide', false)
             }).catch(err => {
@@ -389,8 +415,6 @@ window.home = {
 
         } else {
             StreamOption.stopDeviceAudio()
-            this.local.audio = new MediaStream()
-            this.updateRtcStream()
             dom.toggleClass('active', false)
             $('.J-toggleAudio').toggleClass('hide', true)
         }
@@ -401,7 +425,6 @@ window.home = {
         if (!dom.hasClass('active')) {
             StreamOption.startDeviceVideo().then((obj) => {
                 if (obj.video) this.local.video = obj.video
-                if (obj.audio) this.local.audio = obj.audio
                 this.startLocalVideoStream()
                 this.updateRtcStream()
                 dom.toggleClass('active', true)
@@ -434,7 +457,6 @@ window.home = {
 
         StreamOption[fn]('screen').then((obj) => {
             if (obj.video) this.local.video = obj.video
-            if (obj.audio) this.local.audio = obj.audio
             this.startLocalVideoStream()
             this.updateRtcStream()
             dom.toggleClass('active', true)
@@ -465,7 +487,6 @@ window.home = {
         }
         StreamOption.switchCamera().then((obj) => {
             if (obj.video) this.local.video = obj.video
-            if (obj.audio) this.local.audio = obj.audio
             this.startLocalVideoStream()
             this.updateRtcStream()
         }).catch(err => {
@@ -523,34 +544,31 @@ window.home = {
         this.local.stream = new MediaStream();
 
         let videoTrack = this.local.video && this.local.video.getVideoTracks()[0]
-        let audioTrack = null
+        let audioTrack = this.local.audio && this.local.audio.getAudioTracks()[0]
 
         // 混合音频轨道先
-        if (!this.remixWebAudio) {
-            return new webAudio({ stream: [this.local.audio] }).then((obj) => {
-                this.remixWebAudio = obj
-                this.remixAudio = obj.outputStream
-                audioTrack = this.remixAudio.getAudioTracks()[0]
-                next()
-                return Promise.resolve()
-            }).catch(err => {
-                console.error(err)
-            })
-        }
+        // if (!this.remixWebAudio) {
+        //     return new webAudio({ stream: [this.local.audio] }).then((obj) => {
+        //         this.remixWebAudio = obj
+        //         this.remixAudio = obj.outputStream
+        //         audioTrack = this.remixAudio.getAudioTracks()[0]
+        //         next()
+        //         return Promise.resolve()
+        //     }).catch(err => {
+        //         console.error(err)
+        //     })
+        // }
 
-        audioTrack = this.remixAudio.getAudioTracks()[0]
+        // audioTrack = this.remixAudio.getAudioTracks()[0]
 
-        next()
+        // 添加视频
+        videoTrack && that.local.stream.addTrack(videoTrack)
+
+        //添加音频
+        audioTrack && that.local.stream.addTrack(audioTrack)
 
         return Promise.resolve()
 
-        function next() {
-            // 添加视频
-            videoTrack && that.local.stream.addTrack(videoTrack)
-
-            //添加音频
-            audioTrack && that.local.stream.addTrack(audioTrack)
-        }
     },
     // 更新RTC流
     updateRtcStream() {
@@ -633,7 +651,8 @@ window.home = {
             return
         }
 
-        let stream = this.localStream
+        this.updateLocalStream()
+        let stream = this.local.stream
 
         let url = `wss://${serverWs}/rtcWs`;
 
@@ -653,7 +672,7 @@ window.home = {
         rtc.on('leave', this.rtcLeave.bind(this))
         rtc.on('ready', this.rtcReady.bind(this))
         rtc.on('connected', this.rtcConnected.bind(this))
-        rtc.on('receiveBlob', this.receiveBlob.bind(this))
+        // rtc.on('receiveBlob', this.receiveBlob.bind(this))
     },
     rtcReady(obj) {
         console.log(obj)
@@ -678,6 +697,7 @@ window.home = {
     // 接收到远程流，进行外显
     startRemoteStream(stream) {
         // console.log('remote stream:', stream);
+        window.myRemoteStream = stream
         $remoteVideo.srcObject = stream;
         $remoteVideo.play();
 
@@ -730,7 +750,8 @@ window.StreamOption = {
         // 原生音频流
         audioStream: null
     },
-    init() {
+    init(webAudio) {
+        this.webAudio = webAudio
         this.getDevices()
     },
     /**
@@ -814,40 +835,6 @@ window.StreamOption = {
             return Promise.reject(err)
         });
     },
-    // 关闭音视频
-    stopDevice() {
-        let stream = this.local.stream
-        stream.getTracks().forEach(track => {
-            track.stop()
-            stream.removeTrack(track)
-        })
-        dropMS(this.local.stream)
-        dropMS(this.local.video)
-        this.local.audio && this.local.audio.destroy()
-
-        function dropMS(mms) {
-            if (!mms) return
-            let tracks = mms.getTracks()
-            if (!tracks || tracks.length === 0) return
-
-            mms.getTracks().forEach(function (track) {
-                track.stop()
-                mms.removeTrack(track)
-            })
-        }
-        this.local.stream = null
-        this.local.video = null
-        this.local.audio = null
-
-        this.updateStream()
-
-        // 隐藏按钮
-        $('.J-enableAudio').toggleClass('hide', true)
-        $('.J-switchCamera').toggleClass('hide', true)
-        $('.J-enableAudio').html('播放本地音频(默认不开)')
-
-        return Promise.resolve()
-    },
     // 关闭麦克风
     stopDeviceAudio() {
         let stream = this.local.audioStream
@@ -912,8 +899,9 @@ window.StreamOption = {
         }
         return Promise.resolve({})
     },
-    // 格式化本地流
+    // 格式化本地流, 音频轨道一直在, 不作更改
     formatLocalStream() {
+
         let audio = this.local.audioStream && this.local.audioStream.getAudioTracks()
         let video = this.local.video && this.local.video.getVideoTracks()
 
@@ -925,38 +913,32 @@ window.StreamOption = {
             return Promise.resolve({ video: this.local.video })
         }
 
-        if (this.local.webAudio) {
-            this.local.webAudio.updateStream(this.local.audioStream)
+        if (this.webAudio) {
+            this.webAudio.updateStream({ type: 'voice', stream: this.local.audioStream })
             return Promise.resolve({ audio: this.local.audio, video: this.local.video })
         }
 
-        // 格式化音频
-        return new webAudio({ stream: this.local.audioStream, effect: this.local.effect }).then((obj) => {
-            this.local.webAudio = obj
-            this.local.audio = obj.outputStream
-            return Promise.resolve({ audio: this.local.audio, video: this.local.video })
-        })
     },
     // 播放声音
     startAudio() {
-        this.local.webAudio.play()
+        this.webAudio.play()
     },
     // 停止播放声音
     stopAudio() {
-        this.local.webAudio.pause()
+        this.webAudio.pause()
     },
     // 改变音量
     changeVolumn(volume) {
-        if (this.local.webAudio) {
-            this.local.webAudio.setGain(volume)
+        if (this.webAudio) {
+            this.webAudio.setGain(volume)
         }
     },
     // 人声效果选择
-    audioEffect(type) {
-        if (!this.local.webAudio) {
-            return this.local.effect = type
+    audioEffect(name) {
+        if (!this.webAudio) {
+            return this.local.effect = name
         }
-        this.local.webAudio.audioEffect(type)
+        this.webAudio.audioEffect({ type: 'Convolver', name })
     }
 }
 
