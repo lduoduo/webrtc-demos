@@ -122,6 +122,7 @@ window.home = {
                 }
             })
         }).catch(err => {
+            console.error(err)
             alert(JSON.stringify(err))
         })
 
@@ -137,44 +138,32 @@ window.home = {
             this.webAudio = obj
             this.webAudio.startVisualizer($('.J-rtc-media')[0])
             // 初始化音频
-            this.local.stream = this.local.audio = this.webAudio.streamDestination.stream
+            this.local.audio = this.webAudio.streamDestination.stream
+            console.log('webAudio outputStream', this.local.audio, this.local.audio.getAudioTracks())
             // this.initWebAudioEvent()
             return Promise.resolve()
         }).catch(err => {
             console.error(err)
-            if (err === 'captureStream undefined') {
-                myAlert()
-            } else {
-                alert(JSON.stringify(err))
-            }
-
+            Mt.alert({
+                title: 'WebAudio播放环境启动失败',
+                msg: err.constructor === String ? err : err.stack || err.message,
+                confirmBtnMsg: '好哒'
+            })
             return Promise.reject(err)
         })
 
-        function myAlert(retry) {
-            var html = `请先开启chrome实验功能<br>手动复制下方连接至新窗口,设置为开启状态并重启chrome<br><br>
-                        <p style="font-size:18px;background:#ddd;">
-                            chrome://flags/#enable-experimental-web-platform-features
-                        </p>`
-            Mt.alert({
-                title: 'WebAudio播放环境启动失败',
-                msg: html,
-                html: true,
-                confirmBtnMsg: '设置好了，请手动重启chrome',
-                cb: function () {
-                    // Mt.close()
-                    that.initWebAudio()
-                }
-            })
-        }
     },
     // 初始化背景音乐环境
     initMusicAudio() {
         let that = this
         return new webAudio({ needMediaStream: true }).then((obj) => {
             this.musicAudio = obj
-            this.musicAudio.setGain(0)
             this.initMusicAudioEvent()
+            // 弹框警告
+            if (obj.warn && obj.warn === 'captureStream undefined') {
+                myAlert()
+            }
+
             return Promise.resolve()
         }).catch(err => {
             console.error(err)
@@ -192,6 +181,20 @@ window.home = {
 
             return Promise.reject(err)
         })
+
+        function myAlert(retry) {
+            var html = `如果想要使用实时音视频功能发送伴音,请先开启chrome实验功能<br>手动复制下方连接至新窗口,设置为开启状态并重启chrome<br><br>
+                        <p style="font-size:18px;background:#ddd;">
+                            chrome://flags/#enable-experimental-web-platform-features
+                        </p>`
+            Mt.alert({
+                title: 'WebAudio输出流无法获取',
+                msg: html,
+                html: true,
+                confirmBtnMsg: '设置好了请重启整个浏览器',
+                cancelBtnMsg: '好的，不使用音视频推送伴音'
+            })
+        }
     },
     // 初始化musicAudio事件
     initMusicAudioEvent() {
@@ -310,7 +313,6 @@ window.home = {
 
         window.addEventListener('beforeunload', this.destroy.bind(this));
     },
-
     // 注销RTC
     destroy() {
         if (!this.rtc) return

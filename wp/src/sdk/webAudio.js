@@ -14,6 +14,7 @@
  *      var mv = new webAudio()
  *      // 播放音源
  *      mv.play({url:"/media/xxx.mp3", file:file, needMediaStream:false});
+ *      // 注: needMediaStream 标志位意味着只会只有stream输出，不会外放音源!不会听到声音
  *      // 附加流
  *      mv.addStream(stream)
  *      // 普通播放
@@ -60,7 +61,7 @@ window.webAudio = function (option = {}) {
     // 是否需要输出stream
     this.needMediaStream = option.needMediaStream || false
     // 初始音量
-    this.gain = this.needMediaStream ? 0.5 : 1
+    this.gain = this.needMediaStream ? 0 : 1
     // 音频dom节点
     this.audio = null
     // arraybuffer的源对象
@@ -139,7 +140,7 @@ webAudio.prototype = {
     context: webAudio.ac,
     // 目标输出
     destination: webAudio.ac.destination,
-    // stream输出
+    // stream输出, 如果所有节点连接该节点, 只会得到outputStream, 音源不会真正发出声音
     streamDestination: webAudio.ac.createMediaStreamDestination(),
     // 缓存buffer列表, 共享
     bufferList: {},
@@ -162,7 +163,6 @@ webAudio.prototype = {
         }
 
         this._initWebAudio()
-        this._initAudioIn()
 
         // 初始化节点
         return this._initAudioNode()
@@ -223,14 +223,13 @@ webAudio.prototype = {
         // 混响
         var convolver = this.nodeList.convolver = context.createConvolver();
 
-        // 目的地
-        // this.destination = webAudio.destination
-
         /**************************开始连接************************** */
         gainNode.gain.value = this.gain
 
         // 开始连接
         gainNode.connect(this.destination)
+        gainNode.connect(this.streamDestination)
+
 
         // 是否加效果
         // if (this.effect) {
@@ -243,58 +242,23 @@ webAudio.prototype = {
 
         // convolver.connect(destination)
     },
-    // 第三步：初始化音频输入, 不再使用
-    _initAudioIn() {
-        var that = this
-        var stream = this.stream
-        var context = this.context
-        var tmp
-
-        if (!stream) return
-
-        // 单路输入
-        if (/(MediaStream|LocalMediaStream)/.test(stream.constructor)) {
-            addMs(stream)
-            this.outputStream = this.streamDestination.stream
-            return
-        }
-
-        // 多路输入
-        if (stream.constructor === Array) {
-            stream.forEach(item => {
-                if (!item || !/(MediaStream|LocalMediaStream)/.test(item)) return
-
-                tmp = addMs(item)
-                if (tmp) {
-                    this.audioIn[item.id] = tmp
-                }
-            })
-            this.outputStream = this.destination.stream
-        }
-
-        function addMs(ms) {
-            if (!/(MediaStream|LocalMediaStream)/.test(ms.constructor)) return null
-            if (ms.getAudioTracks().length === 0) return null
-            var audioIn = context.createMediaStreamSource(ms)
-
-            // 大坑问题！ script目前的代码是没有输出的，只作分析使用，所以source还要再连接一下下一个输出!
-            if (that.isAnalyze && that.script) {
-                audioIn.connect(that.script)
-                that.script.connect(that.nodeList.gainNode)
-            }
-
-            audioIn.connect(that.nodeList.gainNode)
-            return audioIn
-        }
-    },
-    // 初始化音频播放节点，一个实例只能有一个
+    // 第三步：初始化音频播放节点，一个实例只能有一个
     _initAudioNode() {
         this.audio = document.createElement('audio')
         this.audio.crossOrigin = 'anonymous';
 
-        if (!this.audio.captureStream && !this.audio.mozCaptureStream) return Promise.reject('captureStream undefined')
-        this.audio.captureStream = this.audio.captureStream || this.audio.mozCaptureStream
-        // if (this.needMediaStream) this.outputStream = this.audio.captureStream()
+        // 验证是否能够输出流
+        if (this.needMediaStream) {
+            if (!this.audio.captureStream && !this.audio.mozCaptureStream) {
+                this.warn = 'captureStream undefined'
+                // 是否需要输出stream
+                this.needMediaStream = false
+                // 初始音量
+                this.gain = this.nodeList.gainNode.gain.value = 1
+            } else {
+                this.audio.captureStream = this.audio.captureStream || this.audio.mozCaptureStream
+            }
+        }
 
         this.source.es = this.context.createMediaElementSource(this.audio);
         this.source.es.connect(this.nodeList.gainNode);
@@ -313,7 +277,7 @@ webAudio.prototype = {
 
         return Promise.resolve(this)
     },
-    // 输入流更新
+    // 输入流更新，输出只能是streamDestination
     _updateInput(type) {
         let that = this
         let stream = this[`${type}In`].stream
@@ -332,10 +296,12 @@ webAudio.prototype = {
         if (type === 'music' && !this[`${type}In`].gainNode) {
             let gainNode = this[`${type}In`].gainNode = this.context.createGain()
             gainNode.gain.value = 1
+
+            gainNode.connect(that.destination)
+            gainNode.connect(that.streamDestination)
+
             if (that.nodeList.analyser) {
                 gainNode.connect(that.nodeList.analyser)
-            } else {
-                gainNode.connect(that.destination)
             }
         }
 
@@ -549,10 +515,10 @@ webAudio.prototype = {
 
             nodes.gainNode.connect(convolver)
 
+            nodes.convolver.connect(this.destination)
+            nodes.convolver.connect(this.streamDestination)
             if (nodes.analyser) {
                 nodes.convolver.connect(nodes.analyser)
-            } else {
-                nodes.convolver.connect(this.destination)
             }
 
         }
@@ -620,7 +586,7 @@ webAudio.prototype = {
 
             // P1: 如果是播放缓存
             if (name && that.bufferList[name]) {
-                that.source.newUrl = name
+                that.source.newUrl = that.source.curr = name
 
                 // 需要输出mediastream, 直接标签化处理
                 if (needMediaStream) {
@@ -669,6 +635,8 @@ webAudio.prototype = {
             } else {
 
                 that._loadBuffer(url, true).then((name) => {
+
+                    that.source.curr = url
 
                     // 需要输出mediastream, 直接标签化处理
                     if (needMediaStream) {
@@ -794,8 +762,10 @@ webAudio.prototype = {
         // }
         this.emit('end')
     },
-    // 音量控制
+    // 音量控制, 对于只有stream输出的音量控制不起作用
     setGain(percent, type) {
+        if (this.needMediaStream) return
+
         // 伴音音量
         if (type && type === 'music' && this.musicIn.gainNode) {
             this.musicIn.gainNode.gain.value = percent * percent
@@ -820,6 +790,8 @@ webAudio.prototype = {
     },
     // 静音
     soundOff(type) {
+        if (this.needMediaStream) return
+
         if (type && type === 'music' && this.musicIn.gainNode) {
             return this.setGain(0, 'music')
         }
@@ -827,6 +799,8 @@ webAudio.prototype = {
     },
     // 放开静音
     soundOn(type) {
+        if (this.needMediaStream) return
+
         if (type && type === 'music' && this.musicIn.gainNode) {
             let gain = this.musicIn.gainNode.gain.value
             return this.setGain(gain, 'music')
@@ -864,9 +838,14 @@ webAudio.prototype = {
         this.nodeList.analyser = this.context.createAnalyser();
         this.nodeList.analyser.fftSize = this.size * 8 * 8;
         this.nodeList.analyser.fftSize = this.size * 8 * 8;
-        this.nodeList.analyser.connect(this.destination);
-        this.nodeList.gainNode.disconnect()
-        this.nodeList.gainNode.connect(this.nodeList.analyser);
+        // if (this.needMediaStream) {
+        //     this.nodeList.analyser.connect(this.destination);
+        // } else {
+        //     this.nodeList.analyser.connect(this.streamDestination);
+
+        // }
+        // this.nodeList.gainNode.disconnect()
+        // this.nodeList.gainNode.connect(this.nodeList.analyser);
 
         return canvas
     },
