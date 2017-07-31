@@ -8,7 +8,7 @@
     "start": "node server.js",
     "app": "webpack-dev-server --config wp.dev.js --open --inline --hot --colors",
     "dev": "node copy.js && webpack --config wp.dev.js",
-    "build": "webpack --config wp.prd.js && node copy.js && webpack --config wp.sdk.js",
+    "build": "node copy.js && webpack --config wp.prd.js",
     "sdk": "webpack --config wp.sdk.js"
   },
   "devDependencies": {

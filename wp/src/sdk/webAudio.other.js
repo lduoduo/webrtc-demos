@@ -90,15 +90,13 @@ window.webAudio = function (option = {}) {
     // 人声输入
     this.voiceIn = {
         stream: null,
-        sourceNode: {},
-        gainNode: null
+        sourceNode: {}
     }
 
     // 伴音输入
     this.musicIn = {
-        // stream: null,
-        sourceNode: {},
-        gainNode: null
+        stream: null,
+        sourceNode: {}
     }
 
     this.instant = 0.0
@@ -146,8 +144,6 @@ webAudio.prototype = {
     streamDestination: webAudio.ac.createMediaStreamDestination(),
     // 缓存buffer列表, 共享
     bufferList: {},
-    // 缓存曲目列表
-    nameList:[],
     // xhr请求
     xhr: new XMLHttpRequest(),
     // 注册监听回调事件
@@ -206,14 +202,8 @@ webAudio.prototype = {
     _initWebAudio() {
         var context = this.context
 
-        // 初始化伴音gainNode
-        var musicGainNode = this.musicIn.gainNode = context.createGain()
-        // 初始化人声gainNode
-        var voiceGainNode = this.voiceIn.gainNode = context.createGain()
         // 增益
         var gainNode = this.nodeList.gainNode = context.createGain()
-        musicGainNode.gain.value = voiceGainNode.gain.value = gainNode.gain.value = this.gain
-
 
         // 滤波器，可以通过该处理器对音乐进行降噪、去人声等处理 chrome55以上
         var biquadNode = this.nodeList.biquadNode = context.createBiquadFilter();
@@ -234,11 +224,12 @@ webAudio.prototype = {
         var convolver = this.nodeList.convolver = context.createConvolver();
 
         /**************************开始连接************************** */
+        gainNode.gain.value = this.gain
+
         // 开始连接
         gainNode.connect(this.destination)
         gainNode.connect(this.streamDestination)
-        musicGainNode.connect(gainNode)
-        voiceGainNode.connect(gainNode)
+
 
         // 是否加效果
         // if (this.effect) {
@@ -255,6 +246,19 @@ webAudio.prototype = {
     _initAudioNode() {
         this.audio = document.createElement('audio')
         this.audio.crossOrigin = 'anonymous';
+
+        // 验证是否能够输出流
+        if (this.needMediaStream) {
+            if (!this.audio.captureStream && !this.audio.mozCaptureStream) {
+                this.warn = 'captureStream undefined'
+                // 是否需要输出stream
+                this.needMediaStream = false
+                // 初始音量
+                this.gain = this.nodeList.gainNode.gain.value = 1
+            } else {
+                this.audio.captureStream = this.audio.captureStream || this.audio.mozCaptureStream
+            }
+        }
 
         this.source.es = this.context.createMediaElementSource(this.audio);
         this.source.es.connect(this.nodeList.gainNode);
@@ -287,6 +291,19 @@ webAudio.prototype = {
         }
 
         nodes = this[`${type}In`].sourceNode = {}
+
+        // 伴音节点连接gainNode
+        if (type === 'music' && !this[`${type}In`].gainNode) {
+            let gainNode = this[`${type}In`].gainNode = this.context.createGain()
+            gainNode.gain.value = 1
+
+            gainNode.connect(that.destination)
+            gainNode.connect(that.streamDestination)
+
+            if (that.nodeList.analyser) {
+                gainNode.connect(that.nodeList.analyser)
+            }
+        }
 
         // 单路输入
         if (/(MediaStream|LocalMediaStream)/.test(stream.constructor)) {
@@ -327,7 +344,7 @@ webAudio.prototype = {
             if (type === 'music') {
                 audioIn.connect(that[`${type}In`].gainNode)
             } else {
-                audioIn.connect(that['voiceIn'].gainNode)
+                audioIn.connect(that.nodeList.gainNode)
             }
 
             return audioIn
@@ -437,8 +454,8 @@ webAudio.prototype = {
                     that.bufferList[name] = xhr.response;
                     return resolve(name)
                 }
-
                 // console.log(xhr.response);
+
                 that._decode(xhr.response).then((buffer) => {
                     that.bufferList[name] = buffer;
                     resolve(name)
@@ -475,7 +492,7 @@ webAudio.prototype = {
 
     /*****************************************效果器应用相关 start******************************************** */
     /**
-     * 应用处理器, 只处理voice
+     * 应用处理器
      * @param {object} option 
      * @param {any} option.type 目前支持的效果器：请参见 #webAudio.effect
      * @param {any} option.name 如果使用混响, 附加混响效果名字(前提要先加载了对应混响效果器文件)
@@ -483,7 +500,7 @@ webAudio.prototype = {
      */
     audioEffect(option) {
         let { type, name } = option
-        let nodes = this.voiceIn
+        let nodes = this.nodeList
         if (type === 'Convolver' && name) {
 
             let convolver = nodes.convolver
@@ -587,15 +604,25 @@ webAudio.prototype = {
             }
 
             // P0: 播放远程音源
-            if (!url) {
-                reject('play song error: undefined url');
+            if (that.source.curr && that.source.curr == url) {
+                reject('same song');
             }
 
             that.source.newUrl = url;
             //pc上通过audio标签创建MediaaudioElementSourceNode，比ajax请求再解码要快
             if (!this.isMobile) {
 
-                that.audio.src = url;
+                if (!that.audio) {
+                    that.audio = new Audio(url);
+                    that.audio.crossOrigin = 'anonymous';
+                    // that.audio.loop = true;
+                    that.source.es = that.context.createMediaElementSource(that.audio);
+                    that.source.es.connect(that.nodeList.gainNode);
+                    // that.audio.onended = this.onended.bind(this);
+                    that.source.es.onended = this._onended.bind(this)
+                } else {
+                    that.audio.src = url;
+                }
 
                 that._canPlay()
 
@@ -604,10 +631,7 @@ webAudio.prototype = {
 
                 that.source.curr = url;
 
-                setTimeout(function(){
-                    resolve(url)
-                }, 2000)
-                
+                resolve(url)
             } else {
 
                 that._loadBuffer(url, true).then((name) => {
@@ -622,9 +646,6 @@ webAudio.prototype = {
                         that._updateOutStream()
                         return Promise.resolve()
                     }
-
-                    that.nameList = that.nameList.concat([name])
-                    that.emit('playlist', that.nameList)
 
                     return that._playBuffer(that.bufferList[name])
                 }).then(() => {
@@ -645,7 +666,7 @@ webAudio.prototype = {
         bs.buffer = buffer;
 
         if (/(resumed|played)/.test(this.playStatus)) {
-            bs.connect(this['musicIn'].gainNode);
+            bs.connect(this.nodeList.gainNode);
         }
 
         //兼容较老的API
@@ -663,12 +684,13 @@ webAudio.prototype = {
 
         if (this.needMediaStream) {
             this.outputStream = this.audio.captureStream()
-            whenEmit()
         } else {
             if (!this.outputStream) {
                 this.outputStream = this.streamDestination.stream
             }
         }
+
+        whenEmit()
 
         function whenEmit() {
             console.log('wait emit outputStream')
@@ -689,28 +711,26 @@ webAudio.prototype = {
         if (/(resumed|played)/.test(this.playStatus)) {
             //兼容较老的API
             this.audio.play();
-            this.source.bs && this.source.bs.connect(this.musicIn.gainNode);
         }
     },
     //暂停
-    pause(type = 'voice') {
+    pause() {
         this.playStatus = 'paused'
-        if (type === 'voice' && this.audio) {
+        if (this.audio) {
             this.audio.pause();
         }
-        if (type === 'music' && this.source.bs && this.source.bs.disconnect) {
+        if (this.source.bs && this.source.bs.disconnect) {
             this.source.bs.disconnect();
         }
     },
     //恢复
-    resume(type = 'voice') {
+    resume() {
         this.playStatus = 'resumed'
-        if (type === 'voice' && this.audio && this.audio.src) {
+        if (this.audio && this.audio.src) {
             this.audio.play().catch(function (e) { console.log(e) });
         }
-        if (type === 'music' && this.source.bs && this.source.bs.connect) {
-            this.source.bs.connect(this.musicIn.gainNode);
-            this.source.bs.onended = this._onended.bind(this)
+        if (this.source.bs && this.source.bs.connect) {
+            this.source.bs.connect(this.nodeList.gainNode);
         }
     },
     //停止
@@ -746,25 +766,23 @@ webAudio.prototype = {
     setGain(percent, type) {
         if (this.needMediaStream) return
 
-        var gain = percent * percent;
-
         // 伴音音量
         if (type && type === 'music' && this.musicIn.gainNode) {
-            console.log('music gain', gain)
-            this.musicIn.gainNode.gain.value = gain
+            this.musicIn.gainNode.gain.value = percent * percent
             return
         }
 
-        // voice音量
-        console.log('voice gain', gain)
-        this.voiceIn.gainNode.gain.value = gain
+        // 伴音音量
+        this.gain = percent * percent;
+        console.log('gain', this.gain)
+        this.nodeList.gainNode.gain.value = this.gain
     },
     // 获取当前设置的音量
     getGain(type) {
         if (type && type === 'music' && this.musicIn.gainNode) {
             return this.musicIn.gainNode.gain.value
         }
-        return this.voiceIn.gainNode.gain.value
+        return this.gain
     },
     // 实时获取当前音量
     getVolume() {
@@ -787,9 +805,7 @@ webAudio.prototype = {
             let gain = this.musicIn.gainNode.gain.value
             return this.setGain(gain, 'music')
         }
-
-        let gain = this.voiceIn.gainNode.gain.value
-        return this.setGain(gain, 'voice')
+        this.setGain(this.gain)
     },
     /*****************************************播放操作 start******************************************** */
 
@@ -822,12 +838,14 @@ webAudio.prototype = {
         this.nodeList.analyser = this.context.createAnalyser();
         this.nodeList.analyser.fftSize = this.size * 8 * 8;
         this.nodeList.analyser.fftSize = this.size * 8 * 8;
+        // if (this.needMediaStream) {
+        //     this.nodeList.analyser.connect(this.destination);
+        // } else {
+        //     this.nodeList.analyser.connect(this.streamDestination);
 
-        this.nodeList.analyser.connect(this.streamDestination);
-        this.nodeList.analyser.connect(this.destination);
-
-        this.nodeList.gainNode.disconnect()
-        this.nodeList.gainNode.connect(this.nodeList.analyser);
+        // }
+        // this.nodeList.gainNode.disconnect()
+        // this.nodeList.gainNode.connect(this.nodeList.analyser);
 
         return canvas
     },
@@ -904,20 +922,12 @@ webAudio.prototype = {
         }
 
         // 断开输入
-        if (this.musicIn) {
-            for (var i in this.musicIn) {
-                this.musicIn[i] && this.musicIn[i].disconnect(0)
+        if (this.audioIn) {
+            for (var i in this.audioIn) {
+                this.audioIn[i] && this.audioIn[i].disconnect(0)
             }
-            this.musicIn = {}
         }
-
-        // 断开输入
-        if (this.voiceIn) {
-            for (var i in this.voiceIn) {
-                this.voiceIn[i] && this.voiceIn[i].disconnect(0)
-            }
-            this.voiceIn = {}
-        }
+        this.audioIn = {}
 
         // this.context && this.context.close()
         var ms = this.stream

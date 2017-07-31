@@ -197,18 +197,19 @@ var config = {
         }),
         // 暂时注释！！！
         //压缩代码
-        // new webpack.optimize.UglifyJsPlugin({    
-        //     compress: {
-        //         warnings: false
-        //     },
-        //     //排除关键字
-        //     except: ['$super', '$', 'import', 'exports', 'require']    
-        // })
+        new webpack.optimize.UglifyJsPlugin({    
+            compress: {
+                warnings: false
+            },
+            //排除关键字
+            except: ['$super', '$', 'import', 'exports', 'require']    
+        })
 
         // new HtmlWebpackPlugin()
         //下面这种写法报错
         // new HtmlWebpackPlugin({ template: './index.html' })
-    ]
+    ],
+    watch: true
 }
 
 module.exports = config;

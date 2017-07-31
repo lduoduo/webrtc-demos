@@ -31,7 +31,7 @@ require('../../media/cs20.mp3')
 
 //test
 require('../../media/data.mp3')
-require('../../media/secret.m4a')
+require('../../media/secret.mp3')
 
 
 // 引入资源, 效果器
@@ -61,9 +61,7 @@ let musicList = [
     `${MY.frontUrl}media/cs17.mp3`,
     `${MY.frontUrl}media/cs18.mp3`,
     `${MY.frontUrl}media/cs19.mp3`,
-    `${MY.frontUrl}media/cs20.mp3`,
-    `${MY.frontUrl}media/secret.m4a`
-    // `${MY.frontUrl}media/test.m4r`
+    `${MY.frontUrl}media/cs20.mp3`
 ]
 
 // 音视频画面容器
@@ -109,17 +107,12 @@ window.home = {
             console.log('webAudio done')
             return this.initWebAudio()
         }).then(() => {
-
             StreamOption.init(this.webAudio);
-            return this.initMusicAudio()
-        }).then(() => {
             this.playMusic().then(() => {
                 // 加载效果器
                 this.loadEffect();
                 // 第一次缓存
-                if (!this.playlist) {
-                    this.musicAudio.loadMusicList({ urls: musicList })
-                }
+                this.webAudio.loadMusicList({ urls: musicList })
             })
         }).catch(err => {
             console.error(err)
@@ -139,8 +132,8 @@ window.home = {
             this.webAudio.startVisualizer($('.J-rtc-media')[0])
             // 初始化音频
             this.local.audio = this.webAudio.streamDestination.stream
-            console.log('webAudio outputStream', this.local.audio, this.local.audio.getAudioTracks())
-            // this.initWebAudioEvent()
+            // console.log('webAudio outputStream', this.local.audio, this.local.audio.getAudioTracks())
+            this.initWebAudioEvent()
             return Promise.resolve()
         }).catch(err => {
             console.error(err)
@@ -153,55 +146,12 @@ window.home = {
         })
 
     },
-    // 初始化背景音乐环境
-    initMusicAudio() {
-        let that = this
-        return new webAudio({ needMediaStream: true }).then((obj) => {
-            this.musicAudio = obj
-            this.initMusicAudioEvent()
-            // 弹框警告
-            if (obj.warn && obj.warn === 'captureStream undefined') {
-                myAlert()
-            }
-
-            return Promise.resolve()
-        }).catch(err => {
-            console.error(err)
-
-            Mt.alert({
-                title: 'WebAudio播放环境启动失败',
-                msg: JSON.stringify(err),
-                html: true,
-                confirmBtnMsg: '知道了',
-                cb: function () {
-                    // Mt.close()
-                    that.initWebAudio()
-                }
-            })
-
-            return Promise.reject(err)
-        })
-
-        function myAlert(retry) {
-            var html = `如果想要使用实时音视频功能发送伴音,请先开启chrome实验功能<br>手动复制下方连接至新窗口,设置为开启状态并重启chrome<br><br>
-                        <p style="font-size:18px;background:#ddd;">
-                            chrome://flags/#enable-experimental-web-platform-features
-                        </p>`
-            Mt.alert({
-                title: 'WebAudio输出流无法获取',
-                msg: html,
-                html: true,
-                confirmBtnMsg: '设置好了请重启整个浏览器',
-                cancelBtnMsg: '好的，不使用音视频推送伴音'
-            })
-        }
-    },
     // 初始化musicAudio事件
-    initMusicAudioEvent() {
-        let musicAudio = this.musicAudio
-        musicAudio.on('end', this.onMusicEnd.bind(this))
-        musicAudio.on('outputStream', this.onMusicStream.bind(this))
-        musicAudio.on('playlist', function (obj) {
+    initWebAudioEvent() {
+        let webAudio = this.webAudio
+        webAudio.on('end', this.onMusicEnd.bind(this))
+        // webAudio.on('outputStream', this.onMusicStream.bind(this))
+        webAudio.on('playlist', function (obj) {
             // console.log('playlist',obj)
             this.playlist = obj
         }.bind(this))
@@ -209,7 +159,7 @@ window.home = {
     // 播放远程背景音乐
     playMusic(file) {
         let option = { file }, name
-        let musicAudio = this.musicAudio
+        let webAudio = this.webAudio
 
         console.log('play list', this.playlist)
         if (this.playlist) {
@@ -221,26 +171,21 @@ window.home = {
             let index = Math.floor(Math.random() * (musicList.length - 1)) + 1
             option.url = musicList[index]
             //test
-            option.url = `${MY.frontUrl}media/secret.m4a`
+            option.url = `${MY.frontUrl}media/secret.mp3`
         }
 
-        return musicAudio.play(option).then(data => {
+        return webAudio.play(option).then(data => {
             $('.J-rtc-file-name').html(data)
             // console.log(data)
             return Promise.resolve()
         }).catch(err => {
             console.log('music play error', err)
             Mt.alert({
-                title: 'WebAudio播放环境启动失败',
+                title: 'WebAudio播放失败',
                 msg: JSON.stringify(err),
                 html: true,
-                confirmBtnMsg: '知道了',
-                cb: function () {
-                    // Mt.close()
-                    that.initWebAudio()
-                }
+                confirmBtnMsg: '知道了'
             })
-            // return this.playMusic();
         });
     },
     // 加载效果器
@@ -268,7 +213,7 @@ window.home = {
     onMusicStream(stream) {
         console.log('outputStream changed', stream, stream.getTracks())
         stream.type = 'music'
-        this.webAudio.updateStream({ type: 'music', stream })
+        // this.webAudio.updateStream({ type: 'music', stream })
         // if (!this.testAudioNode) {
         //     home.test()
         //     return
@@ -336,9 +281,9 @@ window.home = {
     togglePlay() {
         $('.J-play').toggleClass('active')
         if ($('.J-play').hasClass('active')) {
-            this.musicAudio.resume()
+            this.webAudio.resume('music')
         } else {
-            this.musicAudio.pause()
+            this.webAudio.pause('music')
         }
     },
     // 音量控制
@@ -726,12 +671,6 @@ window.home = {
             confirmBtnMsg: '好哒'
         });
         console.log(`远程用户已断开: `, uid)
-    },
-    test() {
-        var a = this.testAudioNode = document.createElement('audio')
-        a.controls = true
-        a.srcObject = this.musicAudio.outputStream
-        document.body.appendChild(a)
     }
 }
 

@@ -71,8 +71,8 @@
         supportVp8: supportVp8,
         supportGetUserMedia: !!getUserMedia,
         supportDataChannel: !!(RTCPeerConnection && RTCPeerConnection.prototype && RTCPeerConnection.prototype.createDataChannel),
-        supportWebAudio: !!(AudioContext && AudioContext.prototype.createMediaStreamSource),
-        supportMediaStream: !!(MediaStream && MediaStream.prototype.removeTrack),
+        supportWebAudio: !!(AudioContext),
+        supportMediaStream: !!(MediaStream),
         supportScreenSharing: !!screenSharing,
         // constructors
         AudioContext: AudioContext,

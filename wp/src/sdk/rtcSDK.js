@@ -153,7 +153,7 @@ rtcSDK.prototype = {
         if (!url) return Promise.reject('缺少wss信令地址')
         if (!roomId) return Promise.reject('缺少房间号码')
 
-        this.stream = stream;
+        this.tmpStream = stream;
         this.data = data;
         this.debug = debug || false;
 
@@ -277,17 +277,17 @@ rtcSDK.prototype = {
         /** 初始化成功的标志位 */
         this.inited = true;
 
-        let stream = this.stream
+        let stream = this.tmpStream
         if (stream) {
             // stream.getTracks().forEach((track) => {
             //     rtcConnection.addTrack(track, stream)
             // })
-            rtcConnection.addStream(stream)
-            console.log(`${this.getDate()} attach stream:`, stream)
+            this.updateStream(stream)
+            // console.log(`${this.getDate()} attach stream:`, stream, stream.getTracks())
         }
 
         // 开启datachannel通道
-        this.dataChannel = rtcConnection.createDataChannel("ldodo", { negotiated: true});
+        this.dataChannel = rtcConnection.createDataChannel("ldodo", { negotiated: true });
         this.onDataChannel(this.dataChannel);
 
         this.initPeerEvent();
@@ -329,14 +329,14 @@ rtcSDK.prototype = {
 
                 if (that.ice_completed) return
 
-                that.duoduo_signal.send('candidate', event.candidate);
+                // that.duoduo_signal.send('candidate', event.candidate);
 
                 // 先缓存，在sdp_answer回来之后再发ice_offer
-                // if (that.localOffer) {
-                //     that.ice_offer.push(event.candidate)
-                // } else {
-                //     that.duoduo_signal.send('candidate', event.candidate);
-                // }
+                if (that.localOffer) {
+                    that.ice_offer.push(event.candidate)
+                } else {
+                    that.duoduo_signal.send('candidate', event.candidate);
+                }
 
             } else {
                 console.log(`${that.getDate()} onicecandidate end`);
@@ -344,7 +344,7 @@ rtcSDK.prototype = {
         };
 
         rtcConnection.onnegotiationneeded = function (event) {
-            console.log(`${that.getDate()} onnegotiationneeded`, event);
+            console.log(`${that.getDate()} onnegotiationneeded`);
         };
 
         /** 对接收方的数据传递设置 */
@@ -472,7 +472,7 @@ rtcSDK.prototype = {
 
                 // check remote stream status
                 that.checkRemoteStreamStatus()
-
+                that.checkICE()
                 return Promise.resolve();
             })
         })
@@ -525,6 +525,7 @@ rtcSDK.prototype = {
 
         sdp_data_parse.media.forEach((media, index) => {
 
+            media.candidates && delete media.candidates
             // offer对ssrc做限制，如果没有视频或者音频，删除ssrc属性(firefox无论有无都有ssrc)
             if (media.type === 'audio') {
                 !audio && delete media.ssrcs && delete media.ssrcGroups && delete media.msid
@@ -629,14 +630,7 @@ rtcSDK.prototype = {
         this.setRemoteDescription('answer', answer).then(() => {
             this.localOffer = null
 
-            // 开始发送ice_offer
-            let iceOffers = this.ice_offer
-            if (iceOffers.length > 0) {
-                iceOffers.forEach((item) => {
-                    this.duoduo_signal.send('candidate', item);
-                })
-            }
-            this.ice_offer = []
+            this.checkICE()
         }).catch(function (e) {
             console.error(e);
         });
@@ -656,10 +650,13 @@ rtcSDK.prototype = {
 
         let tmp = rtcConnection.getLocalStreams()
         tmp = tmp.length > 0 ? tmp[0] : null
-        console.log('当前rtc轨道数目', tmp, (tmp && tmp.getTracks().length))
+        console.log('当前rtc 流id 和 轨道数目', tmp && tmp.id, (tmp && tmp.getTracks().length))
+        tmp && tmp.getTracks().forEach(item => {
+            console.log('   > 轨道id:', `${item.kind}:${item.id}`)
+        })
 
         // 第一次附加
-        if (!rtcStream) {
+        if (!tmp) {
             // rtcStream = new MediaStream()
             // rtcConnection.addStream(rtcStream)
 
@@ -668,7 +665,10 @@ rtcSDK.prototype = {
 
             tmp = rtcConnection.getLocalStreams()
             tmp = tmp.length > 0 ? tmp[0] : null
-            console.log('更新后rtc轨道数目', tmp, (tmp && tmp.getTracks().length))
+            console.log('更新后rtc 流id 和 轨道数目', tmp && tmp.id, (tmp && tmp.getTracks().length))
+            tmp && tmp.getTracks().forEach(item => {
+                console.log('   > 轨道id:', `${item.kind} --> ${item.id}`)
+            })
 
             if (this.rtcStatus === RTC_STATUS['connected']) {
                 this.createOffer()
@@ -719,7 +719,10 @@ rtcSDK.prototype = {
 
         tmp = rtcConnection.getLocalStreams()
         tmp = tmp.length > 0 ? tmp[0] : null
-        console.log('更新后rtc轨道数目', tmp, (tmp && tmp.getTracks().length))
+        console.log('更新后rtc 流id 和 轨道数目', tmp && tmp.id, (tmp && tmp.getTracks().length))
+        tmp && tmp.getTracks().forEach(item => {
+            console.log('   > 轨道id:', `${item.kind} -->  ${item.id}`)
+        })
 
         if (this.rtcStatus === RTC_STATUS['connected']) {
             this.createOffer()
@@ -918,6 +921,17 @@ rtcSDK.prototype = {
     // https://bugzilla.mozilla.org/show_bug.cgi?id=1347578
     checkRemoteStreamStatus() {
 
+    },
+    // 为了保证offer / answer / iceoffer / iceanswer的顺序，这里拎出来处理
+    checkICE() {
+        // 开始发送ice_offer
+        let iceOffers = this.ice_offer
+        if (iceOffers.length > 0) {
+            iceOffers.forEach((item) => {
+                this.duoduo_signal.send('candidate', item);
+            })
+        }
+        this.ice_offer = []
     },
     // 实时更新data
     /**
