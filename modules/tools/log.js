@@ -25,6 +25,7 @@ function Log(data) {
 setInterval(clearLog,600000);
 
 function clearLog(){
+    txt = "";
     fs.writeFile(rootPath, "", (err) => {
         if(err) console.log(err);
     });

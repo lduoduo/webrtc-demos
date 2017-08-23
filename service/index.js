@@ -13,5 +13,6 @@ module.exports = {
     file: require('./p_file'),
     message: require('./p_message'),
     chat: require('./p_chat'),
-    ktv: require('./p_ktv')
+    ktv: require('./p_ktv'),
+    whiteboard: require('./p_whiteboard')
 }

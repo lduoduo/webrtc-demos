@@ -1,0 +1,21 @@
+<% include ../layout/header.html %>
+
+<div class="rtc-main">
+    <h2 class="rtc-title">在线白板</h2>
+    <div class="rtc-btn-box ">
+        <input class="input rtc-channelName J-channelName" type="text" placeholder="请输入数字房间号，相同房间可进行通信哦">
+        <a class="btn btn-white J-start">加入房间</a>
+        <div class="share-url J-share-url"></div>
+    </div>
+
+    <div class="rtc-media">
+        <div class="rtc-btn-box">
+            <span class="checkbox J-canvas-check">是否开启绘图模式</span>
+        </div>
+        <canvas class="list-box J-canvas"></canvas>
+        <video class="list-box video J-remote-video"></video>
+    </div>
+</div>
+
+<% include ../layout/snip.html %>
+<% include ../layout/footer.html %>
