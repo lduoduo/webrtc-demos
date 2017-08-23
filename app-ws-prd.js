@@ -161,7 +161,7 @@ wss.on('connection', function connection(ws, req) {
             });
 
             // console.log(user.id + '加入了' + roomId);
-            console.log(`${userId} join-->`, roomId, Object.keys(tmp));
+            console.log(`${userId} join--> ${roomId}`, Object.keys(tmp));
         },
         // rtc指令消息
         peer(data) {
@@ -190,7 +190,7 @@ wss.on('connection', function connection(ws, req) {
 
                 let myRoom = Object.keys(room[roomId])
 
-                console.log(`${userId} leave-->`, roomId, myRoom);
+                console.log(`${userId} leave--> ${roomId}`, myRoom);
                 if (myRoom.length === 0) {
                     delete room[roomId]
                 }
