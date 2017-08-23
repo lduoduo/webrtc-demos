@@ -32,6 +32,8 @@ require('../../media/cs20.mp3')
 //test
 require('../../media/data.mp3')
 require('../../media/secret.mp3')
+require('../../media/welcome.m4a')
+require('../../media/welcome2.m4a')
 
 
 // 引入资源, 效果器
@@ -41,27 +43,32 @@ require('../../media/e_radio.wav')
 require('../../media/e_spring.wav')
 require('../../media/e_telephone.wav')
 
+window.mixer = require('../../module/tyt/tyt.js')
+// mixer.open()
+
 let musicList = [
-    `${MY.frontUrl}media/cs1.mp3`,
-    `${MY.frontUrl}media/cs2.mp3`,
-    `${MY.frontUrl}media/cs3.mp3`,
-    `${MY.frontUrl}media/cs4.mp3`,
-    `${MY.frontUrl}media/cs5.mp3`,
-    `${MY.frontUrl}media/cs6.mp3`,
-    `${MY.frontUrl}media/cs7.mp3`,
-    `${MY.frontUrl}media/cs8.mp3`,
-    `${MY.frontUrl}media/cs9.mp3`,
-    `${MY.frontUrl}media/cs10.mp3`,
-    `${MY.frontUrl}media/cs11.mp3`,
-    `${MY.frontUrl}media/cs12.mp3`,
-    `${MY.frontUrl}media/cs13.mp3`,
-    `${MY.frontUrl}media/cs14.mp3`,
-    `${MY.frontUrl}media/cs15.mp3`,
-    `${MY.frontUrl}media/cs16.mp3`,
-    `${MY.frontUrl}media/cs17.mp3`,
-    `${MY.frontUrl}media/cs18.mp3`,
-    `${MY.frontUrl}media/cs19.mp3`,
-    `${MY.frontUrl}media/cs20.mp3`
+    // `${MY.frontUrl}media/cs1.mp3`,
+    // `${MY.frontUrl}media/cs2.mp3`,
+    // `${MY.frontUrl}media/cs3.mp3`,
+    // `${MY.frontUrl}media/cs4.mp3`,
+    // `${MY.frontUrl}media/cs5.mp3`,
+    // `${MY.frontUrl}media/cs6.mp3`,
+    // `${MY.frontUrl}media/cs7.mp3`,
+    // `${MY.frontUrl}media/cs8.mp3`,
+    // `${MY.frontUrl}media/cs9.mp3`,
+    // `${MY.frontUrl}media/cs10.mp3`,
+    // `${MY.frontUrl}media/cs11.mp3`,
+    // `${MY.frontUrl}media/cs12.mp3`,
+    // `${MY.frontUrl}media/cs13.mp3`,
+    // `${MY.frontUrl}media/cs14.mp3`,
+    // `${MY.frontUrl}media/cs15.mp3`,
+    // `${MY.frontUrl}media/cs16.mp3`,
+    // `${MY.frontUrl}media/cs17.mp3`,
+    // `${MY.frontUrl}media/cs18.mp3`,
+    // `${MY.frontUrl}media/cs19.mp3`,
+    // `${MY.frontUrl}media/cs20.mp3`
+    `${MY.frontUrl}media/welcome.m4a`,
+    `${MY.frontUrl}media/welcome2.m4a`
 ]
 
 // 音视频画面容器
@@ -129,11 +136,11 @@ window.home = {
 
         return new webAudio().then((obj) => {
             this.webAudio = obj
-            this.webAudio.startVisualizer($('.J-rtc-media')[0])
             // 初始化音频
             this.local.audio = this.webAudio.streamDestination.stream
             // console.log('webAudio outputStream', this.local.audio, this.local.audio.getAudioTracks())
             this.initWebAudioEvent()
+            this.initTyt()
             return Promise.resolve()
         }).catch(err => {
             console.error(err)
@@ -188,6 +195,10 @@ window.home = {
             })
         });
     },
+    // 初始化调音台
+    initTyt(){
+        mixer.init(this.webAudio)
+    },
     // 加载效果器
     loadEffect() {
         this.webAudio.loadMusicList({
@@ -239,7 +250,10 @@ window.home = {
         // 播放背景音乐
         $('body').on('click', '.J-play', this.togglePlay.bind(this))
         $('body').on('click', '.J-tip-check', this.toggleDebugStatus.bind(this))
-        $('body').on('click', '.J-showBrowser', this.showBroswer.bind(this))
+        // $('body').on('click', '.J-showBrowser', this.showBroswer.bind(this))
+
+        $('body').on('click', '.J-showBrowser', this.toggleTYT.bind(this))
+
 
         // 选择伴奏
         $('body').on('click', '.J-rtc-file', function () {
@@ -276,6 +290,10 @@ window.home = {
     toggleDebugStatus() {
         $('.J-tip-check').toggleClass('active')
         this.isDebugEnable = $('.J-tip-check').hasClass('active');
+    },
+    // 开关调音台
+    toggleTYT() {
+        mixer.open()
     },
     // 开关播放音乐
     togglePlay() {
@@ -356,6 +374,7 @@ window.home = {
                     msg: error,
                     confirmBtnMsg: '好哒'
                 })
+                StreamOption.stopDeviceAudio()
                 dom.toggleClass('active', false)
                 $('.J-toggleAudio').toggleClass('hide', true)
             })
@@ -384,6 +403,8 @@ window.home = {
                     msg: error,
                     confirmBtnMsg: '好哒'
                 })
+                this.stopLocalVideoStream()
+                StreamOption.stopDeviceVideo()
                 dom.toggleClass('active', false)
                 $('.J-switchCamera').toggleClass('active', false)
             })

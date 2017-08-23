@@ -88,17 +88,18 @@ window.webAudio = function (option = {}) {
     // }
 
     // 人声输入
-    this.voiceIn = {
+    this.inVoice = {
         stream: null,
-        sourceNode: {},
-        gainNode: null
+        source: {},
+        nodeList: {}
     }
 
     // 伴音输入
-    this.musicIn = {
+    this.inMusic = {
         // stream: null,
-        sourceNode: {},
-        gainNode: null
+        source: {},
+        url: {},
+        nodeList: {}
     }
 
     this.instant = 0.0
@@ -147,7 +148,7 @@ webAudio.prototype = {
     // 缓存buffer列表, 共享
     bufferList: {},
     // 缓存曲目列表
-    nameList:[],
+    nameList: [],
     // xhr请求
     xhr: new XMLHttpRequest(),
     // 注册监听回调事件
@@ -207,28 +208,14 @@ webAudio.prototype = {
         var context = this.context
 
         // 初始化伴音gainNode
-        var musicGainNode = this.musicIn.gainNode = context.createGain()
+        var musicGainNode = this.inMusic.nodeList.gainNode = context.createGain()
         // 初始化人声gainNode
-        var voiceGainNode = this.voiceIn.gainNode = context.createGain()
+        var voiceGainNode = this.inVoice.nodeList.gainNode = context.createGain()
+
         // 增益
         var gainNode = this.nodeList.gainNode = context.createGain()
-        musicGainNode.gain.value = voiceGainNode.gain.value = gainNode.gain.value = this.gain
+        this.inMusic.gain = musicGainNode.gain.value = voiceGainNode.gain.value = gainNode.gain.value = this.gain
 
-
-        // 滤波器，可以通过该处理器对音乐进行降噪、去人声等处理 chrome55以上
-        var biquadNode = this.nodeList.biquadNode = context.createBiquadFilter();
-        // Manipulate the Biquad filter
-        biquadNode.type = "lowshelf";
-        biquadNode.frequency.value = 400;
-        biquadNode.gain.value = 25;
-
-        // 动态压缩器节点
-        var compressor = this.nodeList.compressor = context.createDynamicsCompressor();
-        compressor.threshold.value = -50;
-        compressor.knee.value = 40;
-        compressor.ratio.value = 12;
-        compressor.attack.value = 0;
-        compressor.release.value = 0.25;
 
         // 混响
         var convolver = this.nodeList.convolver = context.createConvolver();
@@ -240,53 +227,83 @@ webAudio.prototype = {
         musicGainNode.connect(gainNode)
         voiceGainNode.connect(gainNode)
 
-        // 是否加效果
-        // if (this.effect) {
-        //     this.audioEffect(this.effect)
-        // }
-
-        // biquadFilter.connect(compressor)
-
-        // compressor.connect(destination)
-
-        // convolver.connect(destination)
+        // 初始化voice连接
+        this._initVoiceNode()
     },
-    // 第三步：初始化音频播放节点，一个实例只能有一个
+    // 初始化音乐相关
+    _initMusicNode() {
+
+    },
+    // 初始化voice相关，比如降噪等
+    _initVoiceNode() {
+        var nodes = this.inVoice.nodeList
+
+        // 滤波器，可以通过该处理器对音乐进行降噪、去人声等处理 chrome55以上
+        var highPassNode = nodes.highPassNode = this.context.createBiquadFilter();
+        highPassNode.type = "highpass";
+        highPassNode.frequency.value = 30;
+        highPassNode.gain.value = -10;
+
+        highPassNode.connect(nodes.gainNode)
+
+        // 动态压缩器节点
+        // var compressor = this.nodeList.compressor = context.createDynamicsCompressor();
+        // compressor.threshold.value = -50;
+        // compressor.knee.value = 40;
+        // compressor.ratio.value = 12;
+        // compressor.attack.value = 0;
+        // compressor.release.value = 0.25;
+    },
+    /**
+     * 第三步：初始化音频播放节点，一个实例只能有一个，该节点针对通过audio赋值url播放音源
+     * 注意: 该节点和bufferSourceNode目前不能共存
+     * @returns 
+     */
     _initAudioNode() {
         this.audio = document.createElement('audio')
         this.audio.crossOrigin = 'anonymous';
 
-        this.source.es = this.context.createMediaElementSource(this.audio);
-        this.source.es.connect(this.nodeList.gainNode);
-        this.source.es.onended = this._onended.bind(this)
+        let source = this.inMusic.source
+        if (source.bs) {
+            source.bs.disconnect()
+            source.bs = null
+        }
+
+        source.bs = this.context.createMediaElementSource(this.audio);
+        source.bs.connect(this.inMusic.nodeList.gainNode);
+        source.bs.onended = this._onended.bind(this)
         this.audio.onended = this._onended.bind(this)
 
-        if (!this.outputStream) return Promise.resolve(this)
+        // if (!this.outputStream) return Promise.resolve(this)
 
         // 兼容
-        if (this.audio.srcObject === undefined) {
-            var url = URL.createObjectURL(this.outputStream)
-            this.audio.src = url
-        } else {
-            this.audio.srcObject = this.outputStream
-        }
+        // if (this.audio.srcObject === undefined) {
+        //     var url = URL.createObjectURL(this.outputStream)
+        //     this.audio.src = url
+        // } else {
+        //     this.audio.srcObject = this.outputStream
+        // }
 
         return Promise.resolve(this)
     },
-    // 输入流更新，输出只能是streamDestination
+    // 输入流更新
     _updateInput(type) {
         let that = this
-        let stream = this[`${type}In`].stream
+
+        let stream = this[`in${type}`].stream
         let context = this.context
-        let tmp, nodes = this[`${type}In`].node
+        let tmp, nodes = this[`in${type}`].source
 
         if (!stream) return
+
         // 先销毁原始输入
         for (let i in nodes) {
             nodes[i].disconnect(0)
+            nodes[i] = null
+            delete nodes[i]
         }
 
-        nodes = this[`${type}In`].sourceNode = {}
+        nodes = this[`in${type}`].source = {}
 
         // 单路输入
         if (/(MediaStream|LocalMediaStream)/.test(stream.constructor)) {
@@ -324,10 +341,10 @@ webAudio.prototype = {
             //     that.script.connect(that.nodeList.gainNode)
             // }
 
-            if (type === 'music') {
-                audioIn.connect(that[`${type}In`].gainNode)
+            if (/music/i.test(type)) {
+                audioIn.connect(that[`inMusic`].nodeList.gainNode)
             } else {
-                audioIn.connect(that['voiceIn'].gainNode)
+                audioIn.connect(that['inVoice'].nodeList.highPassNode)
             }
 
             return audioIn
@@ -343,7 +360,12 @@ webAudio.prototype = {
     updateStream(option) {
         let { type, stream } = option
 
-        this[`${type}In`].stream = stream
+        if (type && !/^(music|voice)$/i.test(type)) return
+
+        type = type || 'Music'
+        type = type[0].toUpperCase() + type.slice(1).toLocaleLowerCase()
+
+        this[`in${type}`].stream = stream
 
         this._updateInput(type)
     },
@@ -483,7 +505,7 @@ webAudio.prototype = {
      */
     audioEffect(option) {
         let { type, name } = option
-        let nodes = this.voiceIn
+        let nodes = this.inVoice
         if (type === 'Convolver' && name) {
 
             let convolver = nodes.convolver
@@ -498,10 +520,11 @@ webAudio.prototype = {
 
             nodes.gainNode.connect(convolver)
 
-            nodes.convolver.connect(this.destination)
-            nodes.convolver.connect(this.streamDestination)
-            if (nodes.analyser) {
-                nodes.convolver.connect(nodes.analyser)
+            if (this.nodeList.analyser) {
+                nodes.convolver.connect(this.nodeList.analyser)
+            } else {
+                nodes.convolver.connect(this.destination)
+                nodes.convolver.connect(this.streamDestination)
             }
 
         }
@@ -539,15 +562,15 @@ webAudio.prototype = {
 
             // P2: 如果是播放本地文件
             if (file && file.constructor === File) {
-                that.source.newUrl = file.name
+                that.inMusic.url.newUrl = file.name
 
                 // 需要输出mediastream, 直接标签化处理
                 if (needMediaStream) {
-                    that.source.curr = file.name
+                    that.inMusic.url.curr = file.name
                     that.audio.src = that.blobUrl = URL.createObjectURL(file);
                     that._canPlay()
                     that._updateOutStream()
-                    resolve(that.source.curr)
+                    resolve(that.inMusic.url.curr)
                     return
                 }
 
@@ -558,7 +581,7 @@ webAudio.prototype = {
                     that._decode(e.target.result).then((buffer) => {
                         return that._playBuffer(buffer)
                     }).then(() => {
-                        resolve(that.source.curr)
+                        resolve(that.inMusic.url.curr)
                     }).catch(err => {
                         reject(err)
                     })
@@ -569,20 +592,21 @@ webAudio.prototype = {
 
             // P1: 如果是播放缓存
             if (name && that.bufferList[name]) {
-                that.source.newUrl = that.source.curr = name
+                that.inMusic.url.newUrl = that.inMusic.url.curr = name
 
                 // 需要输出mediastream, 直接标签化处理
                 if (needMediaStream) {
                     that.blob = new window.Blob([that.bufferList[name]]);
                     that.audio.src = that.blobUrl = URL.createObjectURL(that.blob);
                     that._canPlay()
+                    that._gainSmooth()
                     that._updateOutStream()
-                    resolve(that.source.curr)
+                    resolve(that.inMusic.url.curr)
                     return
                 }
 
                 return that._playBuffer(that.bufferList[name]).then(() => {
-                    resolve(that.source.curr)
+                    resolve(that.inMusic.url.curr)
                 })
             }
 
@@ -591,7 +615,7 @@ webAudio.prototype = {
                 reject('play song error: undefined url');
             }
 
-            that.source.newUrl = url;
+            that.inMusic.url.newUrl = url;
             //pc上通过audio标签创建MediaaudioElementSourceNode，比ajax请求再解码要快
             if (!this.isMobile) {
 
@@ -602,17 +626,17 @@ webAudio.prototype = {
                 // 更新stream
                 // that.outputStream = webAudio.destination.stream
 
-                that.source.curr = url;
+                that.inMusic.url.curr = url;
 
-                setTimeout(function(){
+                setTimeout(function () {
                     resolve(url)
                 }, 2000)
-                
+
             } else {
 
                 that._loadBuffer(url, true).then((name) => {
 
-                    that.source.curr = url
+                    that.inMusic.url.curr = url
 
                     // 需要输出mediastream, 直接标签化处理
                     if (needMediaStream) {
@@ -628,7 +652,7 @@ webAudio.prototype = {
 
                     return that._playBuffer(that.bufferList[name])
                 }).then(() => {
-                    resolve(that.source.curr)
+                    resolve(that.inMusic.url.curr)
                 }).catch(err => {
                     reject(err)
                 })
@@ -639,23 +663,62 @@ webAudio.prototype = {
     // 单纯播放audiobuffer, 不用audio元素
     _playBuffer(buffer) {
         console.log('play buffer')
-        this.source.curr = this.source.newUrl;
+        this.inMusic.url.curr = this.inMusic.url.newUrl;
+
         var bs = this.context.createBufferSource();
         bs.onended = this._onended.bind(this)
         bs.buffer = buffer;
 
-        if (/(resumed|played)/.test(this.playStatus)) {
-            bs.connect(this['musicIn'].gainNode);
+        var source = this.inMusic.source
+        if (source.bs) {
+            source.bs.disconnect()
+            source.bs = null
         }
+
+        source.bs = bs;
+        this._canPlay()
 
         //兼容较老的API
         bs[bs.start ? "start" : "noteOn"](0);
 
-        this.source.bs = bs;
         // 更新stream
         // this.outputStream = webAudio.destination.stream
 
-        return Promise.resolve(this.source.newUrl)
+        return Promise.resolve(this.inMusic.url.newUrl)
+    },
+    // 是否需要播放
+    _canPlay() {
+        if (/(resumed|played)/.test(this.playStatus)) {
+            //兼容较老的API
+            this.audio.play().catch(err => { console.warn(err) });
+            this.inMusic.source.bs && this.inMusic.source.bs.connect(this.inMusic.nodeList.gainNode);
+            this._gainSmoothIn()
+        }
+    },
+    // 音乐淡入
+    _gainSmoothIn() {
+        let gainNode = this.inMusic.nodeList.gainNode
+        let gain = this.inMusic.gain
+        let duration = this.inMusic.source.bs.buffer.duration
+        let currTime = this.context.currentTime;
+        this.inMusic.source.startTime = currTime
+        // Fade it in.
+        // gainNode.gain.linearRampToValueAtTime(0, currTime);
+        // gainNode.gain.linearRampToValueAtTime(gain, currTime + 2);
+        // Then fade it out.
+        // gainNode.gain.linearRampToValueAtTime(gain, currTime + duration - 2);
+        // gainNode.gain.linearRampToValueAtTime(0, currTime + duration);
+    },
+    // 音乐淡出
+    _gainSmoothOut() {
+        let gainNode = this.inMusic.nodeList.gainNode
+        let gain = this.inMusic.gain
+        let duration = this.inMusic.source.bs.buffer.duration
+        duration = duration - (this.context.currentTime - this.inMusic.source.bs.startTime)
+        let currTime = this.context.currentTime
+        // Then fade it out.
+        // gainNode.gain.linearRampToValueAtTime(gain, currTime + duration - 2);
+        // gainNode.gain.linearRampToValueAtTime(0, currTime + duration);
     },
     // 核心API: 获取流数据
     _updateOutStream() {
@@ -684,22 +747,14 @@ webAudio.prototype = {
         }
 
     },
-    // 是否需要播放
-    _canPlay() {
-        if (/(resumed|played)/.test(this.playStatus)) {
-            //兼容较老的API
-            this.audio.play();
-            this.source.bs && this.source.bs.connect(this.musicIn.gainNode);
-        }
-    },
     //暂停
     pause(type = 'voice') {
         this.playStatus = 'paused'
         if (type === 'voice' && this.audio) {
             this.audio.pause();
         }
-        if (type === 'music' && this.source.bs && this.source.bs.disconnect) {
-            this.source.bs.disconnect();
+        if (type === 'music' && this.inMusic.source.bs && this.inMusic.source.bs.disconnect) {
+            this.inMusic.source.bs.disconnect();
         }
     },
     //恢复
@@ -708,9 +763,9 @@ webAudio.prototype = {
         if (type === 'voice' && this.audio && this.audio.src) {
             this.audio.play().catch(function (e) { console.log(e) });
         }
-        if (type === 'music' && this.source.bs && this.source.bs.connect) {
-            this.source.bs.connect(this.musicIn.gainNode);
-            this.source.bs.onended = this._onended.bind(this)
+        if (type === 'music' && this.inMusic.source.bs && this.inMusic.source.bs.connect) {
+            this.inMusic.source.bs.connect(this.inMusic.nodeList.gainNode);
+            this.inMusic.source.bs.onended = this._onended.bind(this)
         }
     },
     //停止
@@ -730,17 +785,17 @@ webAudio.prototype = {
             this.audio.src = null
         }
 
-        if (this.source.bs) {
-            var fn = this.source.bs[this.source.bs.stop ? "stop" : "nodeOff"];
-            fn && this.source.bs[this.source.bs.stop ? "stop" : "nodeOff"]();
+        if (this.inMusic.source) {
+            var fn = this.inMusic.source.bs[this.inMusic.source.stop ? "stop" : "nodeOff"];
+            fn && this.inMusic.source.bs[this.inMusic.source.stop ? "stop" : "nodeOff"]();
         }
     },
     // 播放完毕回调
     _onended() {
-        // if (this.source.curr === this.source.newUrl) {
-        //     this.emit('end')
-        // }
-        this.emit('end')
+        if (this.inMusic.url.curr === this.inMusic.url.newUrl) {
+            this.emit('end')
+        }
+        // this.emit('end')
     },
     // 音量控制, 对于只有stream输出的音量控制不起作用
     setGain(percent, type) {
@@ -749,22 +804,25 @@ webAudio.prototype = {
         var gain = percent * percent;
 
         // 伴音音量
-        if (type && type === 'music' && this.musicIn.gainNode) {
+        if (type && type === 'music' && this.inMusic.nodeList.gainNode) {
             console.log('music gain', gain)
-            this.musicIn.gainNode.gain.value = gain
+            this.inMusic.nodeList.gainNode.gain.value = this.inMusic.gain = gain
+            // 淡出
+            this._gainSmoothOut()
+            // this.inMusic.nodeList.gainNode.gain.setValueCurveAtTime([gain, 0.5, 0.2, 0.0], this.context.currentTime + duration - 3, 3);
             return
         }
 
         // voice音量
         console.log('voice gain', gain)
-        this.voiceIn.gainNode.gain.value = gain
+        this.inVoice.nodeList.gainNode.gain.value = gain
     },
     // 获取当前设置的音量
     getGain(type) {
-        if (type && type === 'music' && this.musicIn.gainNode) {
-            return this.musicIn.gainNode.gain.value
+        if (type && type === 'music' && this.inMusic.nodeList.gainNode) {
+            return this.inMusic.nodeList.gainNode.gain.value
         }
-        return this.voiceIn.gainNode.gain.value
+        return this.inVoice.nodeList.gainNode.gain.value
     },
     // 实时获取当前音量
     getVolume() {
@@ -774,7 +832,7 @@ webAudio.prototype = {
     soundOff(type) {
         if (this.needMediaStream) return
 
-        if (type && type === 'music' && this.musicIn.gainNode) {
+        if (type && type === 'music' && this.inMusic.nodeList.gainNode) {
             return this.setGain(0, 'music')
         }
         return this.setGain(0)
@@ -783,12 +841,12 @@ webAudio.prototype = {
     soundOn(type) {
         if (this.needMediaStream) return
 
-        if (type && type === 'music' && this.musicIn.gainNode) {
-            let gain = this.musicIn.gainNode.gain.value
+        if (type && type === 'music' && this.inMusic.nodeList.gainNode) {
+            let gain = this.inMusic.nodeList.gainNode.gain.value
             return this.setGain(gain, 'music')
         }
 
-        let gain = this.voiceIn.gainNode.gain.value
+        let gain = this.inVoice.nodeList.gainNode.gain.value
         return this.setGain(gain, 'voice')
     },
     /*****************************************播放操作 start******************************************** */
@@ -850,7 +908,8 @@ webAudio.prototype = {
         function v() {
             analyser.getByteFrequencyData(arr);
             //console.log(arr);
-            that.drawCanvasDot(arr); //画圆圈
+            that._tyt_ff(300, 62.5);
+            // that.drawCanvasDot(arr); //画圆圈
             // that.drawCanvasRect(arr); //画柱状条
             window.requestAnimFrame(v); //使动画更流畅
         }
@@ -887,6 +946,161 @@ webAudio.prototype = {
             this.canvasCtx.fill();
         }
     },
+    // 调音台频谱分析
+    _tyt_ff(size, frequency) {
+
+        var canvas = this.canvas;
+        var canvasContext = this.canvasCtx;
+        var context = this.context;
+        var analyser = this.nodeList.analyser
+
+        size = size || 750
+        frequency = frequency || 1000
+
+        var width = canvas.width;
+        var height = canvas.height;
+
+        var paddingTop = 20;
+        var paddingBottom = 20;
+        var paddingLeft = 30;
+        var paddingRight = 30;
+
+        var innerWidth = width - paddingLeft - paddingRight;
+        var innerHeight = height - paddingTop - paddingBottom;
+        var innerBottom = height - paddingBottom;
+
+        var range = analyser.maxDecibels - analyser.minDecibels;  // 70 dB
+
+        // Frequency Resolution
+        var fsDivN = context.sampleRate / analyser.fftSize;
+
+        // This value is the number of samples during "frequency" Hz
+        var nHz = Math.floor(frequency / fsDivN);
+
+        // Get data for drawing spectrum (dB)
+        var spectrums = new Float32Array(size);
+        analyser.getFloatFrequencyData(spectrums);
+
+        // Clear previous data
+        canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw spectrum (dB)
+        canvasContext.beginPath();
+
+        for (var i = 0, len = spectrums.length; i < len; i++) {
+            var x = Math.floor((i / len) * innerWidth) + paddingLeft;
+            var y = Math.floor(-1 * ((spectrums[i] - analyser.maxDecibels) / range) * innerHeight) + paddingTop;
+
+            if (i === 0) {
+                canvasContext.moveTo(x, y);
+            } else {
+                canvasContext.lineTo(x, y);
+            }
+
+            if ((i % nHz) === 0) {
+                var text = '';
+
+                if (frequency < 1000) {
+                    text = (frequency * (i / nHz)) + ' Hz';  // index -> frequency
+                } else {
+                    text = (parseInt(frequency / 1000) * (i / nHz)) + ' kHz';  // index -> frequency
+                }
+
+                // Draw grid (X)
+                canvasContext.fillStyle = 'rgba(255, 100, 0, 1.0)';
+                canvasContext.fillRect(x, paddingTop, 1, innerHeight);
+
+                // Draw text (X)
+                canvasContext.fillStyle = 'rgba(255, 255, 255, 1.0)';
+                canvasContext.font = '14px';
+                canvasContext.fillText(text, (x - (canvasContext.measureText(text).width / 2)), (height - 33));
+            }
+        }
+
+        canvasContext.strokeStyle = 'rgba(100, 100, 255, 1.0)';
+        canvasContext.lineWidth = 4;
+        canvasContext.lineCap = 'round';
+        canvasContext.lineJoin = 'miter';
+        canvasContext.stroke();
+
+        // Draw grid and text (Y)
+        for (var i = analyser.minDecibels; i <= analyser.maxDecibels; i += 10) {
+            var gy = Math.floor(-1 * ((i - analyser.maxDecibels) / range) * innerHeight) + paddingTop;
+
+            // Draw grid (Y)
+            canvasContext.fillStyle = 'rgba(255, 100, 100, 1.0)';
+            canvasContext.fillRect(paddingLeft, gy, innerWidth, 1);
+
+            // Draw text (Y)
+            canvasContext.fillStyle = 'rgba(255, 255, 255, 1.0)';
+            canvasContext.font = '12px "Times New Roman"';
+            canvasContext.fillText((i + ' dB'), 3, gy);
+        }
+
+    },
+    // 调音台EQ调整
+    _tyt_eq() {
+
+    },
+    /**
+     * 初始化EQ环境
+     * 
+     * @param {array} list 频率数组 [62.5,124]等
+     */
+    initEq(list) {
+        if (!list || list.constructor !== Array) return Promise.reject('initEq error: invalid parameter')
+        var nodes = this.inVoice.nodeList.eqList = {}
+        var context = this.context
+
+        list.forEach((item, index) => {
+            nodes[item] = context.createBiquadFilter()
+            nodes[item].type = 'peaking'
+            nodes[item].gain.value = 0;
+            nodes[item].frequency.value = item;
+            if (index === 0) {
+                this.inVoice.nodeList.highPassNode.disconnect()
+                this.inVoice.nodeList.highPassNode.connect(nodes[item])
+                // 记录第一个
+                nodes['first'] = nodes[item]
+            }
+            if (index > 0) {
+                nodes[list[index - 1]].connect(nodes[item])
+            }
+            if (index === list.length - 1) {
+                nodes[item].connect(this.inVoice.nodeList.gainNode)
+            }
+        })
+        return Promise.resolve()
+    },
+    /**
+     * EQ调整
+     * 
+     * @param {any} f 频率值
+     * @param {any} gain 增益值
+     */
+    eq(f, gain) {
+        if (!this.inVoice.nodeList.eqList) return Promise.reject('eq error: please initEq first')
+        this.inVoice.nodeList.eqList[f].gain.value = gain
+        return Promise.resolve()
+    },
+    /**
+     * 开启EQ效果
+     * 
+     */
+    enableEQ() {
+        if (!this.inVoice.nodeList.eqList) return Promise.reject('eq error: please initEq first')
+        this.inVoice.nodeList.highPassNode.disconnect()
+        this.inVoice.nodeList.highPassNode.connect(this.inVoice.nodeList.eqList['first'])
+    },
+    /**
+     * 关闭EQ效果
+     * 
+     */
+    disableEQ() {
+        if (!this.inVoice.nodeList.eqList) return Promise.reject('eq error: please initEq first')
+        this.inVoice.nodeList.highPassNode.disconnect()
+        this.inVoice.nodeList.highPassNode.connect(this.inVoice.nodeList.gainNode)
+    },
     // 随机数
     getRandom(m, n, isFloat) {
         return (isFloat ? Math.random() * (n - m) + m : Math.floor(Math.random() * (n - m)) + m);
@@ -904,19 +1118,19 @@ webAudio.prototype = {
         }
 
         // 断开输入
-        if (this.musicIn) {
-            for (var i in this.musicIn) {
-                this.musicIn[i] && this.musicIn[i].disconnect(0)
+        if (this.inMusic) {
+            for (var i in this.inMusic) {
+                this.inMusic[i] && this.inMusic[i].disconnect(0)
             }
-            this.musicIn = {}
+            this.inMusic = {}
         }
 
         // 断开输入
-        if (this.voiceIn) {
-            for (var i in this.voiceIn) {
-                this.voiceIn[i] && this.voiceIn[i].disconnect(0)
+        if (this.inVoice) {
+            for (var i in this.inVoice) {
+                this.inVoice[i] && this.inVoice[i].disconnect(0)
             }
-            this.voiceIn = {}
+            this.inVoice = {}
         }
 
         // this.context && this.context.close()

@@ -1,0 +1,11 @@
+
+8/23/2017, 11:02:04 PM ---> "server init console.log"
+8/23/2017, 11:02:06 PM ---> "替换 console"
+8/23/2017, 11:02:07 PM ---> "server: https://192.168.31.210:8081"
+8/23/2017, 11:02:08 PM ---> "static: http://192.168.31.210:8091"
+8/23/2017, 11:02:12 PM ---> "io server https on 8098 env: dev"
+8/23/2017, 11:02:12 PM ---> "ws server https on 8099 env: dev"
+8/23/2017, 11:02:17 PM ---> "::ffff:192.168.31.210 ---> http type: undefined"
+8/23/2017, 11:02:22 PM ---> "access home"
+8/23/2017, 11:02:22 PM ---> "promises done"
+8/23/2017, 11:02:22 PM ---> "/webrtc response time : 5106 ms"

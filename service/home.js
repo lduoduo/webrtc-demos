@@ -7,6 +7,8 @@ var config = require('../config');
 module.exports = {
     index: function* (next) {
 
+        console.log('access home');
+        
         this.body = new view('home', this);
 
         this.body.page('home', {

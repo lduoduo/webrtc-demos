@@ -49,5 +49,8 @@
     "wrappy": "^1.0.2"
   },
   "author": "lduoduo",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "ejs": "^2.5.7"
+  }
 }

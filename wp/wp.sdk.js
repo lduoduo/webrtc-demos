@@ -61,7 +61,8 @@ var config = {
                     loader: 'babel-loader',
                     options: { presets: ['es2015'] }
                 }]
-            }
+            },
+            { test: /\.ejs$/, use: ['ejs-loader?variable=data'] }
         ]
     },
     resolve: {
@@ -71,6 +72,10 @@ var config = {
          * 然后是已安装的 Node Modules（分别用你自己的源码和 Node Modules 目录替换其中的 src 和 node_modules）。
          */
         modules: [path.resolve(__dirname, "src"), "node_modules"]
+    },
+    // 问题：https://segmentfault.com/q/1010000004399596
+    node: {
+        fs: 'empty'
     },
     plugins: [
         new webpack.optimize.OccurrenceOrderPlugin(),

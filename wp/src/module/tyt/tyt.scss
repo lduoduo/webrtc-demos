@@ -1,0 +1,117 @@
+.tyt-box {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+    z-index: 111;
+    width: 100vw;
+    height: 100vh;
+    top: 0;
+    left: 0;
+    background: rgba(0, 0, 0, 0.4);
+    &.active {
+        display: flex;
+    }
+}
+
+.tyt-detail {
+    width: 80vw;
+    height: 80vh;
+    background: rgba(52, 123, 122, 0.5);
+    position: relative;
+    text-align: center;
+    .item {
+        // width: 90%;
+        position: relative;
+    }
+    canvas {
+        position: relative;
+        width: 100%;
+        height: auto;
+        z-index: 1!important;
+    }
+    .close {
+        width: 50px;
+        height: 50px;
+        border: 1px solid pink;
+        display: inline-block;
+        position: absolute;
+        right: 0;
+        top: 0;
+        cursor: pointer;
+        z-index: 11;
+    }
+    .analyser {
+        min-height: 30vmin;
+        width: 100%;
+    }
+    .eq {
+        display: inline-block;
+        display: -ms-flexbox;
+        /* display: flex; */
+        position: relative;
+        /* -webkit-box-align: center; */
+        -ms-flex-align: center;
+        /* align-items: center; */
+        /* -webkit-box-pack: center; */
+        -ms-flex-pack: center;
+        justify-content: center;
+        font-size: 1.5vmin;
+        padding-top: 10px;
+        height: 25vmin;
+        box-sizing: border-box;
+        border: 1px solid #ddd;
+        &:before {
+            content: 'EQ';
+            display: block;
+            position: absolute;
+            width: 3vmin;
+            text-align: center;
+            left: -5vmin;
+            color: #ddd;
+            top: 35%;
+        }
+        .eq-icon {
+            // content: '';
+            width: 3vmin;
+            height: 3vmin;
+            border: 1px solid green;
+            background-color: transparent;
+            border-radius: 50%;
+            position: absolute;
+            left: -5vmin;
+            top: 45%;
+        }
+        &.active {
+            .eq-icon {
+                background-color: green;
+            }
+        }
+        .eq-item {
+            width: 8vmin;
+            max-width: 50px;
+            height: 20vmin;
+            text-align: left;
+            font-size: 1.5vmin;
+            display: inline-block;
+            position: relative;
+            &:after {
+                content: attr(data-type);
+                display: inline-block;
+                width: 8vmin;
+                max-width: 50px;
+                font-size: 1.1em;
+                color: #fff;
+                position: absolute;
+                bottom: -3vmin;
+                text-align: center;
+            }
+        }
+        input[type='range'] {
+            transform: rotate(-90deg) translate(-19vmin, 3vmin);
+            ;
+            width: 20vmin;
+            transform-origin: left;
+        }
+    }
+}
