@@ -81,7 +81,7 @@
 + dataChannel默认值开启一个长连接，特殊数据传输(ArrayBuffer|Blob)只有需要数据传输的时候开启，数据传输完毕关闭，并且数据通道由发起方发送给接收方
 + 支持多文件同时传输，开启多个通道，通道传输完毕自动关闭销毁
 + 支持blob格式数据切块传输，demo里面是canvas导出blob进行传输，对端接收还原
-
++ 更改服务端劝酒console.log日志，输出到日志文件
 [后续更新独立出来](//github.com/lduoduo/webrtc-demos/tree/master/update.md)
 
 ## next step
