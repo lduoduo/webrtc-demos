@@ -40,5 +40,9 @@
     "socket.io": "^2.0.3",
     "url": "^0.11.0",
     "ws": "^3.0.0"
+  },
+  "devDependencies": {
+    "babel-preset-stage-0": "^6.24.1",
+    "es6-promise": "^4.1.1"
   }
 }

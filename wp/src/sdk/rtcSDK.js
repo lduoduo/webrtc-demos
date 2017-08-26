@@ -40,17 +40,22 @@
  *      - rtc.sendFile(file) // 发送文件
  *      - rtc.sendText(data) // 发送自定义纯文本
  *      - rtc.updateData(data) // 传递自定义数据，目前没有任何限制(已废弃，不推荐使用)
+ * 5. 本地日志颜色搭配
+ *      - 有活动：黄色
+ *      - 本地信息: 蓝色
+ *      - 远程信息: 绿色 
  */
 
 /******************************SDK START************************************ */
 
 // import Logger from './log.js'
 require('webrtc-adapter')
+require('es6-promise').polyfill();
 const sdpTransform = window.sdpTransform = require('sdp-transform')
 const support = require('./rtcPolify');
 const signal = require('./rtcSignal');
 const sdpUtil = require('./rtcSdpUtil');
-// const logger = new Logger('client');
+import RtcStats from './rtcStats';
 
 // 不允许改的属性, rtc当前的状态
 const RTC_STATUS = {
@@ -145,7 +150,6 @@ rtcSDK.prototype = {
     // 初始化入口
     init(option = {}) {
         // 先校验平台适配情况
-
         if (!support.support) return Promise.reject('当前浏览器不支持WebRTC功能')
 
         let { url, roomId, stream, data, debug } = option
@@ -296,6 +300,8 @@ rtcSDK.prototype = {
 
         if (this.isReSetup) return
         this.emit('ready', { status: true, url: wss })
+
+        this.initStats()
     },
     // 初始化注册peer系列监听事件
     initPeerEvent() {
@@ -352,10 +358,10 @@ rtcSDK.prototype = {
             let id = e.channel.id
             let label = e.channel.label
 
-            console.log(`${that.getDate()} on remote data channel ${label} ---> ${id}`);
+            logger.log(`${that.getDate()} on remote data channel ${label} ---> ${id}`);
 
             that.rtcDataChannels[label] = e.channel
-            console.log(`${that.getDate()} data channel state: ` + e.channel.readyState);
+            logger.log(`${that.getDate()} data channel state: ${e.channel.readyState}`);
 
             // 对接收到的通道进行事件注册!
             that.onDataChannel(that.rtcDataChannels[label]);
@@ -363,22 +369,37 @@ rtcSDK.prototype = {
 
         rtcConnection.oniceconnectionstatechange = function () {
             let state = rtcConnection.iceConnectionState
-            console.log(`${that.getDate()} ice connection state change to: `, state);
+            logger.info(`${that.getDate()} ice connection state change to: ${state}`);
             if (state === 'connected') {
-                console.log(`${that.getDate()} rtc connect success`)
+                logger.log(`${that.getDate()} rtc connect success`)
                 that.rtcStatus = RTC_STATUS['connected']
                 that.emit('connected')
-                // that.ice_completed = true
+                that.rtcStats.start()
+            }
+            if(state === 'closed'){
+                logger.error(`${that.getDate()} rtc connect fail`)
+                that.rtcStats.stop()
             }
             if (that.dataChannel) {
-                console.log(`${that.getDate()} data channel state: ` + that.dataChannel.readyState);
+                logger.info(`${that.getDate()} data channel state: ${that.dataChannel.readyState}`);
             }
         };
+    },
+    // 初始化stats
+    initStats() {
+        this.rtcStats = new RtcStats({ peer: this.rtcConnection, interval: 10000 })
+        this.rtcStats.on('stats', function (result) {
+            console.log(result)
+        })
+    },
+    // stats数据展示
+    previewGetStatsResult(result) {
+        console.log(result)
     },
     // 真正开始连接
     start() {
 
-        console.log(`${this.getDate()} 开始连接, 发出链接邀请`);
+        logger.info(`${this.getDate()} 开始连接, 发出链接邀请`);
         let rtcConnection = this.rtcConnection
         // let that = this
 
@@ -398,7 +419,7 @@ rtcSDK.prototype = {
             voiceActivityDetection: false
             // iceRestart: true
         };
-        console.log('\r\n-------------------------ldodo: activity start----------------------------\r\n')
+        logger.warn('\r\n-------------------------ldodo: activity start----------------------------\r\n')
         return rtcConnection.createOffer(config).then((_offer) => {
 
             this.localOffer = _offer
@@ -444,7 +465,7 @@ rtcSDK.prototype = {
 
         return rtcConnection.createAnswer().then((_answer) => {
 
-            console.log(`${that.getDate()} create answer:`, _answer)
+            logger.info(`${that.getDate()} create answer:`, _answer)
 
             // 协议更改，统一vp9编解码格式
             _answer.sdp = sdpUtil.maybePreferVideoReceiveCodec(_answer.sdp, { videoRecvCodec: 'VP9' });
@@ -509,8 +530,8 @@ rtcSDK.prototype = {
         let sdp_data_parse = sdpTransform.parse(sdp_data.sdp)
         let sdp_diff_parse = sdp_diff && sdpTransform.parse(sdp_diff.sdp)
 
-        console.log('更新前 sdp_data', sdp_data.type, sdp_data_parse)
-        console.log('更新前 sdp_diff', sdp_diff && sdp_diff.type, sdp_diff_parse)
+        logger.info('更新前 sdp_data', sdp_data.type, sdp_data_parse)
+        logger.info('更新前 sdp_diff', sdp_diff && sdp_diff.type, sdp_diff_parse)
 
         //test
         // if (true) return data
@@ -569,7 +590,7 @@ rtcSDK.prototype = {
             }
         })
 
-        console.log('更新后 sdp_data', sdp_data_parse)
+        logger.log('更新后 sdp_data', sdp_data_parse)
 
         sdp_data.sdp = sdpTransform.write(sdp_data_parse)
 
@@ -585,28 +606,28 @@ rtcSDK.prototype = {
      */
     setLocalDescription(type, data) {
         let rtcConnection = this.rtcConnection
-        console.log(`${this.getDate()} setLocalDescription ${type}:\n`, sdpTransform.parse(data.sdp))
-        console.log(`\n`, data.sdp)
+        logger.info(`${this.getDate()} setLocalDescription ${type}:\n`, sdpTransform.parse(data.sdp))
+        logger.info(`\n`, data.sdp)
         return rtcConnection.setLocalDescription(new RTCSessionDescription(data))
     },
     setRemoteDescription(type, data) {
         let rtcConnection = this.rtcConnection
-        console.log(`${this.getDate()} setRemoteDescription ${type}:\n`, sdpTransform.parse(data.sdp))
-        console.log(`\n`, data.sdp)
+        logger.log(`${this.getDate()} setRemoteDescription ${type}:\n`, sdpTransform.parse(data.sdp))
+        logger.log(`\n`, data.sdp)
         return rtcConnection.setRemoteDescription(new RTCSessionDescription(data))
     },
     /** 将对方加入自己的候选者中 */
     onNewPeer(candidate) {
         // var candidate = data.data;
-        console.log(`${this.getDate()} on remote ICE`, candidate)
+        logger.log(`${this.getDate()} on remote ICE`, candidate)
         this.rtcConnection.addIceCandidate(new RTCIceCandidate(candidate));
     },
     /** 接收链接邀请，发出响应 */
     onOffer(offer) {
 
-        console.log('\r\n-------------------------ldodo: activity start----------------------------\r\n')
+        logger.warn('\r\n-------------------------ldodo: activity start----------------------------\r\n')
 
-        console.log(`${this.getDate()} on remote offer`, offer);
+        logger.info(`${this.getDate()} on remote offer`, offer);
 
         // 协议更改，统一vp9编解码格式
         offer.sdp = sdpUtil.maybePreferVideoSendCodec(offer.sdp, { videoRecvCodec: 'VP9' });
@@ -619,7 +640,7 @@ rtcSDK.prototype = {
     },
     /** 接收响应，设置远程的peer session */
     onAnswer(answer) {
-        console.log(`${this.getDate()} on remote answer`, answer)
+        logger.info(`${this.getDate()} on remote answer`, answer)
 
         // 协议更改，统一vp9编解码格式
         answer.sdp = sdpUtil.maybePreferVideoSendCodec(answer.sdp, { videoRecvCodec: 'VP9' });
@@ -650,7 +671,7 @@ rtcSDK.prototype = {
 
         let tmp = rtcConnection.getLocalStreams()
         tmp = tmp.length > 0 ? tmp[0] : null
-        console.log('当前rtc 流id 和 轨道数目', tmp && tmp.id, (tmp && tmp.getTracks().length))
+        logger.info('当前rtc 流id 和 轨道数目', tmp && tmp.id, (tmp && tmp.getTracks().length))
         tmp && tmp.getTracks().forEach(item => {
             console.log('   > 轨道id:', `${item.kind}:${item.id}`)
         })
@@ -1059,7 +1080,7 @@ rtcSDK.prototype = {
         let that = this
         // console.log(`${that.getDate()} 通道事件注册:`, channel)
         channel.onopen = function () {
-            console.log(`${that.getDate()} ${channel.id} --> dataChannel opened, ready now`);
+            logger.log(`${that.getDate()} ${channel.id} --> dataChannel opened, ready now`);
         };
         channel.onerror = function (error) {
             console.error(`${that.getDate()} ${channel.id} --> dataChannel error:`, error);
@@ -1082,7 +1103,7 @@ rtcSDK.prototype = {
 
         };
         channel.onclose = function (data) {
-            console.warn(`${that.getDate()} ${channel.id} --> dataChannel closed now`);
+            logger.warn(`${that.getDate()} ${channel.id} --> dataChannel closed now`);
             // 关闭自己端的通道
             that.closeChannel(channel)
         };
@@ -1098,7 +1119,7 @@ rtcSDK.prototype = {
             channel = this.rtcDataChannels[channel]
         }
         if (!channel) return
-        console.log(`${this.getDate()} 销毁通道: ${channel.label} --> ${channel.id}`)
+        logger.warn(`${this.getDate()} 销毁通道: ${channel.label} --> ${channel.id}`)
         channel.close();
         channel.onopen = null
         channel.onerror = null
@@ -1382,28 +1403,52 @@ rtcSDK.prototype = {
     }
 }
 
+// call(参数一个个传递) & apply(参数数组传递)
 window.logger = {
+    init() {
+        this.loggerInfo = console.info
+        this.loggerWarn = console.warn
+        this.loggerError = console.error
+        this.loggerLog = console.log
+    },
     info() {
-        if (arguments.length === 0) return
-        let style = 'color:green;font-size:15px';
-        // arguments = Array.prototype.splice.call(arguments,1,style)
-        // arguments.splice()
-        arguments[0] = `%c${arguments[0]}`
-        this.log.call(this, arguments[0], style, arguments)
-        // Function.prototype.apply.call(console.log, console, arguments)
-        // console.info.bind(console, arguments[0], style, arguments);
+        let params = [...arguments]
+        if (params.length === 0) return
+        let style = 'color:blue;font-size:15px';
+        params[0] = `%c${params[0]}`
+        params.splice(1, 0, style)
+        console.log.apply(this, params)
     },
     warn() {
-        console.warn('%ctest', 'color:orange;font-size:15px', 'aaaa')
+        let params = [...arguments]
+        if (params.length === 0) return
+        let style = 'color:orange;font-size:15px';
+        params[0] = `%c${params[0]}`
+        params.splice(1, 0, style)
+        console.log.apply(this, params)
+        // console.warn('%ctest', 'color:orange;font-size:15px', 'aaaa')
     },
     error() {
-        console.error('%ctest', 'color:red;font-size:15px', 'aaaa')
+        let params = [...arguments]
+        if (params.length === 0) return
+        let style = 'color:red;font-size:15px';
+        params[0] = `%c${params[0]}`
+        params.splice(1, 0, style)
+        console.log.apply(this, params)
+        // console.error('%ctest', 'color:red;font-size:15px', 'aaaa')
     },
     log() {
-        Function.prototype.apply.call(console.log, console, arguments)
+        let params = [...arguments]
+        if (params.length === 0) return
+        let style = 'color:green;font-size:15px';
+        params[0] = `%c${params[0]}`
+        params.splice(1, 0, style)
+        console.log.apply(this, params)
+        // this.loggerLog.call(this,arguments)
+        // Function.prototype.apply.cal(console.log, console, arguments)
     }
 }
-
+logger.init()
 /****************API对外暴露部分*************** */
 window.rtcSDK = rtcSDK
 

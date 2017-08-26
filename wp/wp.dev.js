@@ -167,7 +167,10 @@ var config = {
          * 这样子 Webpack 解决起来就会处理得更好一些，按照那个顺序先找我们的源文件目录，
          * 然后是已安装的 Node Modules（分别用你自己的源码和 Node Modules 目录替换其中的 src 和 node_modules）。
          */
-        modules: [path.resolve(__dirname, "src"), "node_modules"]
+        modules: [path.resolve(__dirname, "src"), "node_modules"],
+        alias: {
+            sdk: path.resolve(__dirname, 'sdk/'),
+        }
     },
     // 问题：https://segmentfault.com/q/1010000004399596
     node: {

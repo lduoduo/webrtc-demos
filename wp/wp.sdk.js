@@ -57,10 +57,8 @@ var config = {
         rules: [
             {
                 test: /\.js$/,
-                use: [{
-                    loader: 'babel-loader',
-                    options: { presets: ['es2015'] }
-                }]
+                loader: 'babel-loader?cacheDirectory=true',
+                exclude: /(node_modules|bower_components)/,
             },
             { test: /\.ejs$/, use: ['ejs-loader?variable=data'] }
         ]

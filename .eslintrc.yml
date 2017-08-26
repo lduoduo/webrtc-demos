@@ -1,0 +1,17 @@
+extends: standard
+plugins:
+  - standard
+  - promise
+globals:
+  WebSocket: true
+  postMessage: true
+  Worker: true
+  Blob: true
+  URL: true
+  WebGLRenderingContext: true
+  WebGL2RenderingContext: true
+  RTCIceCandidate: true
+  RTCPeerConnection: true
+  MediaStream: true
+  MediaRecorder: true
+  RTCSessionDescription: true

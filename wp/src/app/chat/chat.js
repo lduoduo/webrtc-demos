@@ -43,7 +43,7 @@ window.home = {
     },
     initEvent() {
         let that = this
-        $('body').on('click', '.J-start', this.startRTC.bind(this))
+        $('body').on('click', '.J-toggleRTC', this.toggleRTC.bind(this))
         $('body').on('click', '.J-toggleMic', this.toggleMic.bind(this))
         $('body').on('click', '.J-toggleCam', this.toggleCam.bind(this))
         $('body').on('click', '.J-toggleScreenShare', this.toggleScreenShare.bind(this))
@@ -335,6 +335,20 @@ window.home = {
 
     },
     /**********************blob end**************************** */
+    toggleRTC() {
+        $('.J-toggleRTC').toggleClass('active')
+        if ($('.J-toggleRTC').hasClass('active')) {
+            this.startRTC()
+            $('.J-toggleRTC').html('退出房间')
+        } else {
+            this.stopRTC()
+            $('.J-toggleRTC').html('加入房间')
+        }
+    },
+    stopRTC() {
+        if (!this.rtc || !this.rtc.inited) return
+        this.rtc.stop()
+    },
     /** 
      * 开启rtc连接
      * 支持的事件注册列表
