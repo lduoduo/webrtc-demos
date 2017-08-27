@@ -310,7 +310,7 @@ rtcSDK.prototype = {
         // 远端流附加了轨道
         rtcConnection.ontrack = function (event) {
             let stream = event.streams[0]
-            console.log(`${that.getDate()} on remote track`, stream);
+            logger.log(`${that.getDate()} on remote track`, stream);
         };
 
         /** 远端流过来了, 新建video标签显示 */
@@ -321,7 +321,7 @@ rtcSDK.prototype = {
 
         rtcConnection.onremovestream = function (e) {
 
-            console.log(`${that.getDate()} on remove stream`, arguments);
+            logger.warn(`${that.getDate()} on remove stream`, arguments);
         }
 
         /** 设置本地sdp触发本地ice */
@@ -627,7 +627,7 @@ rtcSDK.prototype = {
 
         logger.warn('\r\n-------------------------ldodo: activity start----------------------------\r\n')
 
-        logger.info(`${this.getDate()} on remote offer`, offer);
+        logger.log(`${this.getDate()} on remote offer`, offer);
 
         // 协议更改，统一vp9编解码格式
         offer.sdp = sdpUtil.maybePreferVideoSendCodec(offer.sdp, { videoRecvCodec: 'VP9' });
@@ -686,7 +686,7 @@ rtcSDK.prototype = {
 
             tmp = rtcConnection.getLocalStreams()
             tmp = tmp.length > 0 ? tmp[0] : null
-            console.log('更新后rtc 流id 和 轨道数目', tmp && tmp.id, (tmp && tmp.getTracks().length))
+            logger.info('更新后rtc 流id 和 轨道数目', tmp && tmp.id, (tmp && tmp.getTracks().length))
             tmp && tmp.getTracks().forEach(item => {
                 console.log('   > 轨道id:', `${item.kind} --> ${item.id}`)
             })
@@ -926,15 +926,15 @@ rtcSDK.prototype = {
         let stream = event.stream
         if (!stream) return
 
-        console.log(`${this.getDate()} get remote stream`, stream);
+        logger.log(`${this.getDate()} get remote stream`, stream);
         this.emit('stream', stream)
 
         stream.onaddtrack = e => {
-            console.log(`${this.getDate()} on add track`, e)
+            logger.log(`${this.getDate()} on add track`, e)
         }
 
         stream.onremovetrack = e => {
-            console.log(`${this.getDate()} on remove track`, e)
+            logger.warn(`${this.getDate()} on remove track`, e)
         }
     },
     // 每当对方sdp协议发生变动，主动检查远程媒体流的状态，该方法用于修复firefox无法获知removeTrack事件

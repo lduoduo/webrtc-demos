@@ -169,7 +169,8 @@ var config = {
          */
         modules: [path.resolve(__dirname, "src"), "node_modules"],
         alias: {
-            sdk: path.resolve(__dirname, 'sdk/'),
+            sdk: path.resolve(__dirname, 'src/sdk/'),
+            lib: path.resolve(__dirname, 'src/lib/'),
         }
     },
     // 问题：https://segmentfault.com/q/1010000004399596

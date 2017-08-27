@@ -37,6 +37,7 @@
  * 注：
  *  -   插件依赖 webrtcsupport.js
  *  -   如果播放arraybuffer需要获取输出mediastream，请在play()里附带参数 needMediaStream = true
+ *  -   
  */
 
 
@@ -45,13 +46,14 @@
 * 单个输入的音频流可以更新替换为新的，但是多路输入目前无法进行更新
 * @param {Boolean} [option.isAnalyze=false] 是否需要监控分析，默认不分析
 * @param {string} [option.effect] 效果器
-* @param {num} [option.type] 音源类型(伴奏|人声：人声会做处理): 值请参考 #webAudio.type
+* @param {num} [option.type] 音源类型(伴奏|人声：人声会做处理): 值请参考 #WebAudio.type
+* @param {num} [option.outputType] 输出类型, 默认都输出: 值请参考 #WebAudio.outputType
 * @param {boolean} [option.needMediaStream=false]  对于arraybuffer, 是否需要输出mediastream, 默认不输出
 * 注: 需要输出mediastream的缓存默认不解码，使用原始arraybuffer
-* @param {array} [option.effect] 音频处理器,按照顺序处理: 值请参考 #webAudio.effect
+* @param {array} [option.effect] 音频处理器,按照顺序处理: 值请参考 #WebAudio.effect
 */
 
-window.webAudio = function (option = {}) {
+window.WebAudio = function (option = {}) {
     this.support = support.supportWebAudio && support.supportMediaStream
 
     // 回调监听
@@ -60,6 +62,7 @@ window.webAudio = function (option = {}) {
     this.nodeList = {}
     // 是否需要输出stream
     this.needMediaStream = option.needMediaStream || false
+    this.outputType = option.outputType || WebAudio.outputType['all']
     // 初始音量
     this.gain = this.needMediaStream ? 0 : 1
     // 音频dom节点
@@ -111,15 +114,24 @@ window.webAudio = function (option = {}) {
 }
 
 // N个实例对应一个环境
-webAudio.ac = new support.AudioContext()
+WebAudio.ac = new support.AudioContext()
 
 // 音源类型：人声 、 伴奏
-webAudio.type = {
+WebAudio.type = {
     'voice': 1,
     'music': 2
 }
+
+// 输出类型：扬声器输出、mediastream输出、二者一起输出、都不输出, 默认输出扬声器
+WebAudio.outputType = {
+    'none': 0,
+    'speaker': 1,
+    'stream': 2,
+    'all': 3,
+}
+
 // 支持的处理器
-webAudio.effect = [
+WebAudio.effect = [
     // 低通滤波器
     'BiquadFilter',
     // 混响
@@ -138,13 +150,13 @@ webAudio.effect = [
     'Monitor'
 ]
 
-webAudio.prototype = {
+WebAudio.prototype = {
     // webAudio上下文
-    context: webAudio.ac,
+    context: WebAudio.ac,
     // 目标输出
-    destination: webAudio.ac.destination,
+    destination: WebAudio.ac.destination,
     // stream输出, 如果所有节点连接该节点, 只会得到outputStream, 音源不会真正发出声音
-    streamDestination: webAudio.ac.createMediaStreamDestination(),
+    streamDestination: WebAudio.ac.createMediaStreamDestination(),
     // 缓存buffer列表, 共享
     bufferList: {},
     // 缓存曲目列表
@@ -212,7 +224,7 @@ webAudio.prototype = {
         // 初始化人声gainNode
         var voiceGainNode = this.inVoice.nodeList.gainNode = context.createGain()
 
-        // 增益
+        // 总增益
         var gainNode = this.nodeList.gainNode = context.createGain()
         this.inMusic.gain = musicGainNode.gain.value = voiceGainNode.gain.value = gainNode.gain.value = this.gain
 
@@ -221,11 +233,13 @@ webAudio.prototype = {
         var convolver = this.nodeList.convolver = context.createConvolver();
 
         /**************************开始连接************************** */
-        // 开始连接
-        gainNode.connect(this.destination)
-        gainNode.connect(this.streamDestination)
         musicGainNode.connect(gainNode)
         voiceGainNode.connect(gainNode)
+        // 开始连接
+        var regSpeaker = new RegExp('[' + WebAudio.outputType['speaker'] + WebAudio.outputType['all'] + ']')
+        var regMedia = new RegExp('[' + WebAudio.outputType['media'] + WebAudio.outputType['all'] + ']')
+        regSpeaker.test(this.outputType) && gainNode.connect(this.destination)
+        regMedia.test(this.outputType) && gainNode.connect(this.streamDestination)
 
         // 初始化voice连接
         this._initVoiceNode()
@@ -499,7 +513,7 @@ webAudio.prototype = {
     /**
      * 应用处理器, 只处理voice
      * @param {object} option 
-     * @param {any} option.type 目前支持的效果器：请参见 #webAudio.effect
+     * @param {any} option.type 目前支持的效果器：请参见 #WebAudio.effect
      * @param {any} option.name 如果使用混响, 附加混响效果名字(前提要先加载了对应混响效果器文件)
      * 目前只支持混响
      */
@@ -848,6 +862,16 @@ webAudio.prototype = {
 
         let gain = this.inVoice.nodeList.gainNode.gain.value
         return this.setGain(gain, 'voice')
+    },
+    // 关闭扬声器输出
+    speakerOff(){
+        var gainNode = this.nodeList.gainNode
+        gainNode.disconnect(this.destination)
+    },
+    // 开启扬声器输出
+    speakerOn(){
+        var gainNode = this.nodeList.gainNode
+        gainNode.connect(this.destination)
     },
     /*****************************************播放操作 start******************************************** */
 

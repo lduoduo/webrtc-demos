@@ -6,13 +6,14 @@
 
 // 引入样式文件
 import './chat.scss';
-
+// import StreamOption from 'lib/stream'
 
 // 音视频画面容器
 let $localVideo = document.querySelector('.J-local-video');
 let $remoteVideo = document.querySelector('.J-remote-video');
 
 let serverWs = MY.environment === 'dev' ? `${window.location.hostname}:${MY.wsPort}` : window.location.hostname
+let serverStatic = MY.frontUrl
 
 window.home = {
     // 本地流
@@ -36,10 +37,29 @@ window.home = {
     // 是否开启debug弹框
     isDebugEnable: $('.J-tip-check').hasClass('active'),
     init() {
-        stream.init();
         this.initEvent();
+        this.lazy()
 
         if (/Firefox/.test(platform.name)) $('.J-toggleScreenShare').toggleClass('hide', false)
+    },
+    // 延迟加载
+    lazy() {
+        lazyLoad(`${serverStatic}lib/stream.js`).then(() => {
+            return lazyLoad(`${serverStatic}lib/webAudio.js`).then(() => {
+                console.log('webAudio done')
+                return this.initWebAudio()
+            })
+        }).then(() => {
+            StreamOption.init(this.webAudio);
+            // StreamOption.stopAudio()
+        }).catch(err => {
+            console.error(err)
+            alert(JSON.stringify(err))
+        })
+
+        lazyLoad(`${serverStatic}lib/mediaRecord.js`).then(() => {
+            console.log('mediaRecord done')
+        })
     },
     initEvent() {
         let that = this
@@ -64,6 +84,29 @@ window.home = {
 
         window.addEventListener('beforeunload', this.destroy.bind(this));
     },
+    // 初始化webAudio环境,该环境融合背景音乐和voice人声
+    initWebAudio() {
+        let that = this
+
+        return new WebAudio().then((obj) => {
+            this.webAudio = obj
+            // 初始化音频
+            this.local.audio = this.webAudio.streamDestination.stream
+            // console.log('webAudio outputStream', this.local.audio, this.local.audio.getAudioTracks())
+            // this.initWebAudioEvent()
+            // this.initTyt()
+            return Promise.resolve()
+        }).catch(err => {
+            console.error(err)
+            Mt.alert({
+                title: 'WebAudio播放环境启动失败',
+                msg: err.constructor === String ? err : err.stack || err.message,
+                confirmBtnMsg: '好哒'
+            })
+            return Promise.reject(err)
+        })
+
+    },
     destroy() {
         if (!this.rtc) return
         this.rtc.stop()
@@ -82,10 +125,10 @@ window.home = {
         let dom = $('.J-toggleAudio')
         dom.toggleClass('active')
         if (dom.hasClass('active')) {
-            stream.startAudio()
+            StreamOption.startAudio()
             dom.html('关闭本地音频(默认不开)')
         } else {
-            stream.stopAudio()
+            StreamOption.stopAudio()
             dom.html('播放本地音频(默认不开)')
         }
     },
@@ -94,10 +137,7 @@ window.home = {
         let dom = $(e.target)
         dom.toggleClass('active')
         if (dom.hasClass('active')) {
-            stream.startDeviceAudio().then((obj) => {
-                if (obj.video) this.local.video = obj.video
-                if (obj.audio) this.local.audio = obj.audio
-                this.updateRtcStream()
+            StreamOption.startDeviceAudio().then((obj) => {                
                 dom.html('关闭麦克风')
                 $('.J-toggleAudio').toggleClass('hide', false)
             }).catch(err => {
@@ -109,10 +149,11 @@ window.home = {
                     confirmBtnMsg: '好哒'
                 })
                 $('.J-toggleAudio').toggleClass('hide', true)
+                StreamOption.stopDeviceAudio()
             })
 
         } else {
-            stream.stopDeviceAudio()
+            StreamOption.stopDeviceAudio()
             this.local.audio = new MediaStream()
             this.updateRtcStream()
             dom.html('开启麦克风')
@@ -124,13 +165,13 @@ window.home = {
         let dom = $(e.target)
         dom.toggleClass('active')
         if (dom.hasClass('active')) {
-            stream.startDeviceVideo().then((obj) => {
+            StreamOption.startDeviceVideo().then((obj) => {
                 if (obj.video) this.local.video = obj.video
                 if (obj.audio) this.local.audio = obj.audio
                 this.startLocalVideoStream()
                 this.updateRtcStream()
                 dom.html('关闭摄像头')
-                $('.J-switchCamera').toggleClass('hide', stream.devices.video.length <= 1)
+                $('.J-switchCamera').toggleClass('hide', StreamOption.devices.video.length <= 1)
             }).catch(err => {
                 console.error(err)
                 let error = err.constructor === String ? err : typeof err === 'object' ? err.stack || err.message : JSON.stringify(err)
@@ -140,10 +181,13 @@ window.home = {
                     confirmBtnMsg: '好哒'
                 })
                 $('.J-switchCamera').toggleClass('hide', true)
+                this.stopLocalVideoStream()
+                StreamOption.stopDeviceVideo()
             })
 
         } else {
-            stream.stopDeviceVideo()
+            this.stopLocalVideoStream()
+            StreamOption.stopDeviceVideo()
             this.local.video = new MediaStream()
             this.updateRtcStream()
             dom.html('开启摄像头')
@@ -181,7 +225,7 @@ window.home = {
     },
     // 切换前后摄像头
     switchCamera() {
-        stream.switchCamera().then((obj) => {
+        StreamOption.switchCamera().then((obj) => {
             if (obj.video) this.local.video = obj.video
             if (obj.audio) this.local.audio = obj.audio
             this.startLocalVideoStream()
@@ -444,226 +488,226 @@ window.home = {
 }
 
 
-let stream = {
-    browser: platform.name,
-    isVideoEnable: false, //是否开启摄像头
-    // 当前在使用摄像头的位置, 默认第一个
-    deviceIndex: 0,
-    // 本地摄像头个数
-    devices: [],
-    local: {
-        // webAudio
-        webAudio: null,
-        video: null,
-        // webAudio处理后的音频流
-        audio: null,
-        // 原生音频流
-        audioStream: null
-    },
-    init() {
-        this.getDevices()
-    },
-    /**
-     * 获取设备列表
-     * 
-     * @returns obj 设备列表对象
-     */
-    getDevices() {
-        // 文档见: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices
-        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-            // console.log("your browser not support this feature");
-            return Promise.reject("your browser not support this feature, see https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices");
-        }
+// let StreamOption = {
+//     browser: platform.name,
+//     isVideoEnable: false, //是否开启摄像头
+//     // 当前在使用摄像头的位置, 默认第一个
+//     deviceIndex: 0,
+//     // 本地摄像头个数
+//     devices: [],
+//     local: {
+//         // webAudio
+//         webAudio: null,
+//         video: null,
+//         // webAudio处理后的音频流
+//         audio: null,
+//         // 原生音频流
+//         audioStream: null
+//     },
+//     init() {
+//         this.getDevices()
+//     },
+//     /**
+//      * 获取设备列表
+//      * 
+//      * @returns obj 设备列表对象
+//      */
+//     getDevices() {
+//         // 文档见: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices
+//         if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+//             // console.log("your browser not support this feature");
+//             return Promise.reject("your browser not support this feature, see https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices");
+//         }
 
-        return navigator.mediaDevices.enumerateDevices().then((devices) => {
-            let result = {
-                video: [],
-                audio: []
-            };
-            devices.forEach((device, index) => {
-                if (device.kind === "videoinput") {
-                    result.video.push({
-                        deviceId: device.deviceId,
-                        label: device.label ? device.label : "camera " + (result.video.length + 1)
-                    });
-                } else if (device.kind === "audioinput") {
-                    result.audio.push({
-                        deviceId: device.deviceId,
-                        label: device.label
-                    });
-                }
-            });
-            this.devices = result;
-            console.log(result);
-            return Promise.resolve(result);
-        })
-    },
-    // 开启麦克风
-    startDeviceAudio(deviceId) {
-        if (!deviceId) deviceId = this.devices.audio[0].deviceId
+//         return navigator.mediaDevices.enumerateDevices().then((devices) => {
+//             let result = {
+//                 video: [],
+//                 audio: []
+//             };
+//             devices.forEach((device, index) => {
+//                 if (device.kind === "videoinput") {
+//                     result.video.push({
+//                         deviceId: device.deviceId,
+//                         label: device.label ? device.label : "camera " + (result.video.length + 1)
+//                     });
+//                 } else if (device.kind === "audioinput") {
+//                     result.audio.push({
+//                         deviceId: device.deviceId,
+//                         label: device.label
+//                     });
+//                 }
+//             });
+//             this.devices = result;
+//             console.log(result);
+//             return Promise.resolve(result);
+//         })
+//     },
+//     // 开启麦克风
+//     startDeviceAudio(deviceId) {
+//         if (!deviceId) deviceId = this.devices.audio[0].deviceId
 
-        return navigator.mediaDevices.getUserMedia({
-            audio: {
-                deviceId: deviceId
-            }
-        }).then((stream) => {
-            this.local.audioStream = stream;
-            return this.formatLocalStream()
-        }).catch(err => {
-            console.error(err)
-            return Promise.reject(err)
-        });
-    },
-    // 开启摄像头
-    startDeviceVideo(deviceId) {
-        this.isVideoEnable = true
+//         return navigator.mediaDevices.getUserMedia({
+//             audio: {
+//                 deviceId: deviceId
+//             }
+//         }).then((stream) => {
+//             this.local.audioStream = stream;
+//             return this.formatLocalStream()
+//         }).catch(err => {
+//             console.error(err)
+//             return Promise.reject(err)
+//         });
+//     },
+//     // 开启摄像头
+//     startDeviceVideo(deviceId) {
+//         this.isVideoEnable = true
 
-        if (!deviceId) deviceId = this.devices.video[this.deviceIndex].deviceId
-        return navigator.mediaDevices.getUserMedia({
-            video: {
-                deviceId: deviceId,
-                width: { min: 640, ideal: 1080, max: 1920 },
-                height: { min: 480, ideal: 720, max: 1080 },
-                // frameRate: { min: 10, ideal: 15, max: 25 },
-                frameRate: { max: 30 }
-            },
-            audio: false
-        }).then((stream) => {
-            this.local.video = stream;
-            return this.formatLocalStream()
-        }).catch(err => {
-            console.error(err)
-            return Promise.reject(err)
-        });
-    },
-    // 关闭音视频
-    stopDevice() {
-        let stream = this.local.stream
-        stream.getTracks().forEach(track => {
-            track.stop()
-            stream.removeTrack(track)
-        })
-        dropMS(this.local.stream)
-        dropMS(this.local.video)
-        this.local.audio && this.local.audio.destroy()
+//         if (!deviceId) deviceId = this.devices.video[this.deviceIndex].deviceId
+//         return navigator.mediaDevices.getUserMedia({
+//             video: {
+//                 deviceId: deviceId,
+//                 width: { min: 640, ideal: 1080, max: 1920 },
+//                 height: { min: 480, ideal: 720, max: 1080 },
+//                 // frameRate: { min: 10, ideal: 15, max: 25 },
+//                 frameRate: { max: 30 }
+//             },
+//             audio: false
+//         }).then((stream) => {
+//             this.local.video = stream;
+//             return this.formatLocalStream()
+//         }).catch(err => {
+//             console.error(err)
+//             return Promise.reject(err)
+//         });
+//     },
+//     // 关闭音视频
+//     stopDevice() {
+//         let stream = this.local.stream
+//         stream.getTracks().forEach(track => {
+//             track.stop()
+//             stream.removeTrack(track)
+//         })
+//         dropMS(this.local.stream)
+//         dropMS(this.local.video)
+//         this.local.audio && this.local.audio.destroy()
 
-        function dropMS(mms) {
-            if (!mms) return
-            let tracks = mms.getTracks()
-            if (!tracks || tracks.length === 0) return
+//         function dropMS(mms) {
+//             if (!mms) return
+//             let tracks = mms.getTracks()
+//             if (!tracks || tracks.length === 0) return
 
-            mms.getTracks().forEach(function (track) {
-                track.stop()
-                mms.removeTrack(track)
-            })
-        }
-        this.local.stream = null
-        this.local.video = null
-        this.local.audio = null
+//             mms.getTracks().forEach(function (track) {
+//                 track.stop()
+//                 mms.removeTrack(track)
+//             })
+//         }
+//         this.local.stream = null
+//         this.local.video = null
+//         this.local.audio = null
 
-        this.updateStream()
+//         this.updateStream()
 
-        // 隐藏按钮
-        $('.J-enableAudio').toggleClass('hide', true)
-        $('.J-switchCamera').toggleClass('hide', true)
-        $('.J-enableAudio').html('播放本地音频(默认不开)')
+//         // 隐藏按钮
+//         $('.J-enableAudio').toggleClass('hide', true)
+//         $('.J-switchCamera').toggleClass('hide', true)
+//         $('.J-enableAudio').html('播放本地音频(默认不开)')
 
-        return Promise.resolve()
-    },
-    // 关闭麦克风
-    stopDeviceAudio() {
-        let stream = this.local.audioStream
-        stream && stream.getTracks().forEach(track => {
-            track.stop()
-            stream.removeTrack(track)
-        })
-    },
-    /**
-     * 关闭摄像头
-     * 
-     * @param {any} isMannual 是否是手动关闭，默认是true: 手动
-     */
-    stopDeviceVideo(isMannual = true) {
-        if (isMannual) this.isVideoEnable = false
-        let stream = this.local.video
-        stream && stream.getTracks().forEach(track => {
-            track.stop()
-            stream.removeTrack(track)
-        })
-    },
-    // 切换摄像头
-    switchCamera() {
-        if (!this.devices.video || this.devices.video.length <= 1) return
-        this.deviceIndex++;
-        if (this.deviceIndex > this.devices.video.length - 1) {
-            this.deviceIndex = 0;
-        }
-        let deviceId = this.devices.video[this.deviceIndex].deviceId
+//         return Promise.resolve()
+//     },
+//     // 关闭麦克风
+//     stopDeviceAudio() {
+//         let stream = this.local.audioStream
+//         stream && stream.getTracks().forEach(track => {
+//             track.stop()
+//             stream.removeTrack(track)
+//         })
+//     },
+//     /**
+//      * 关闭摄像头
+//      * 
+//      * @param {any} isMannual 是否是手动关闭，默认是true: 手动
+//      */
+//     stopDeviceVideo(isMannual = true) {
+//         if (isMannual) this.isVideoEnable = false
+//         let stream = this.local.video
+//         stream && stream.getTracks().forEach(track => {
+//             track.stop()
+//             stream.removeTrack(track)
+//         })
+//     },
+//     // 切换摄像头
+//     switchCamera() {
+//         if (!this.devices.video || this.devices.video.length <= 1) return
+//         this.deviceIndex++;
+//         if (this.deviceIndex > this.devices.video.length - 1) {
+//             this.deviceIndex = 0;
+//         }
+//         let deviceId = this.devices.video[this.deviceIndex].deviceId
 
-        this.stopDeviceVideo()
-        return this.startDeviceVideo(deviceId)
-    },
-    // 开启桌面共享
-    startScreenShare(type) {
-        if (!/Firefox/.test(this.browser)) return
-        if (this.local.video) {
-            this.stopDeviceVideo(false)
-        }
+//         this.stopDeviceVideo()
+//         return this.startDeviceVideo(deviceId)
+//     },
+//     // 开启桌面共享
+//     startScreenShare(type) {
+//         if (!/Firefox/.test(this.browser)) return
+//         if (this.local.video) {
+//             this.stopDeviceVideo(false)
+//         }
 
-        let constraint = {
-            audio: false,
-            video: {
-                mediaSource: type
-            }
-        }
+//         let constraint = {
+//             audio: false,
+//             video: {
+//                 mediaSource: type
+//             }
+//         }
 
-        return navigator.mediaDevices.getUserMedia(constraint).then((stream) => {
-            this.local.video = stream;
-            return this.formatLocalStream()
-        }).catch(err => {
-            console.error(err)
-            return Promise.reject(err)
-        });
-    },
-    // 关闭桌面共享
-    stopScreenShare() {
-        this.stopDeviceVideo(false)
-        if (this.isVideoEnable) {
-            return this.startDeviceVideo()
-        }
-        return Promise.resolve({})
-    },
-    // 格式化本地流
-    formatLocalStream() {
-        let audio = this.local.audioStream && this.local.audioStream.getAudioTracks()
-        let video = this.local.video && this.local.video.getVideoTracks()
+//         return navigator.mediaDevices.getUserMedia(constraint).then((stream) => {
+//             this.local.video = stream;
+//             return this.formatLocalStream()
+//         }).catch(err => {
+//             console.error(err)
+//             return Promise.reject(err)
+//         });
+//     },
+//     // 关闭桌面共享
+//     stopScreenShare() {
+//         this.stopDeviceVideo(false)
+//         if (this.isVideoEnable) {
+//             return this.startDeviceVideo()
+//         }
+//         return Promise.resolve({})
+//     },
+//     // 格式化本地流
+//     formatLocalStream() {
+//         let audio = this.local.audioStream && this.local.audioStream.getAudioTracks()
+//         let video = this.local.video && this.local.video.getVideoTracks()
 
-        if (!audio && !video) {
-            return Promise.reject('none tracks available')
-        }
+//         if (!audio && !video) {
+//             return Promise.reject('none tracks available')
+//         }
 
-        if (!audio) {
-            return Promise.resolve({ video: this.local.video })
-        }
+//         if (!audio) {
+//             return Promise.resolve({ video: this.local.video })
+//         }
 
-        // 格式化音频
-        return new webAudio(this.local.audioStream).then((obj) => {
-            this.local.webAudio = obj
-            this.local.audio = obj.outputStream
-            return Promise.resolve({ audio: this.local.audio, video: this.local.video })
+//         // 格式化音频
+//         return new webAudio(this.local.audioStream).then((obj) => {
+//             this.local.webAudio = obj
+//             this.local.audio = obj.outputStream
+//             return Promise.resolve({ audio: this.local.audio, video: this.local.video })
 
-        })
-    },
-    // 播放声音
-    startAudio() {
-        this.local.webAudio.play()
-    },
-    // 停止播放声音
-    stopAudio() {
-        this.local.webAudio.pause()
-    }
+//         })
+//     },
+//     // 播放声音
+//     startAudio() {
+//         this.local.webAudio.play()
+//     },
+//     // 停止播放声音
+//     stopAudio() {
+//         this.local.webAudio.pause()
+//     }
 
-}
+// }
 
 
 home.init();

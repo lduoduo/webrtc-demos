@@ -11,6 +11,10 @@
 + 文件实时并发传输 [RTCDataChannel online demo](//ldodo.cc/webrtc/rtcdata)
 + Blob / ArrayBuffer 实时传输
 
+### 正在进行中功能
+1. 白板交互
+2. stats数据分析
+
 ### 项目目录结构和涉及知识点
 + koa(不多说)
 + webpack打包，由原项目 [my-wp2](//github.com/lduoduo/my-wp2/tree/webrtc) 改进过来使用
@@ -33,7 +37,7 @@
     - 兼容性: RTCPeerConnection || webkitRTCPeerConnection || mozRTCPeerConnection
 + 建立任意数据实时传输通道(目前只支持JSON和ArrayBuffer): [RTCDataChannel](//developer.mozilla.org/en-US/docs/Web/API/RTCDataChannel)
 + 具体功能点文档请前往 [wp](//github.com/lduoduo/webrtc-demos/tree/master/wp) 目录app下的源码查看readme.me
-+ 自己封装的[rtcSDK脚本](//github.com/lduoduo/webrtc-demos/blob/master/wp/src/lib/rtcSDK.js)
++ 自己封装的[rtcSDK脚本](//github.com/lduoduo/webrtc-demos/blob/master/wp/src/sdk/rtcSDK.js)
 
 
 ### WebRTC 点对点连接建立流程详述

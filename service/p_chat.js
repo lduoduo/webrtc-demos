@@ -17,7 +17,7 @@ module.exports = {
             }
         });
 
-        this.body.addReferences('webAudio.js');
+        // this.body.addReferences('webAudio.js');
 
         yield this.body.render();
 

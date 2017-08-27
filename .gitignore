@@ -10,4 +10,4 @@ target/
 test/
 *.bk.*
 *.mp3
-log/
+logs/
