@@ -1,16 +1,13 @@
 'use strict';
-
-// Last time updated: 2017-08-23 7:46:28 AM UTC
-
-// _______________
-// getStats v1.0.4
-
-// Open-Sourced: https://github.com/muaz-khan/getStats
-
-// --------------------------------------------------
-// Muaz Khan     - www.MuazKhan.com
-// MIT License   - www.WebRTC-Experiment.com/licence
-// --------------------------------------------------
+/**
+ * getstats获取统计数据，根据开源api进行了改动
+ * 开源地址： https://github.com/muaz-khan/getStats
+ * 调用方法
+ * 1. 初始化: var getStats = new GetStats(rtcConnection, interval)
+ * 2. 开启监控: getStats.start()
+ * 3. 关闭监控: getStats.stop()
+ * 4. 回调监听: getStats.on('stats', onStats.bind(onStats))
+ */
 
 window.getStats = function(mediaStreamTrack, callback, interval) {
 

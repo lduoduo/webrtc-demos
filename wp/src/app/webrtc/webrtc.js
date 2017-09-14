@@ -363,11 +363,14 @@ var rtc = {
                 tmpStream.audio.destroy()
                 tmpStream.audio = null
             }
-            tmpStream.audio = new MediaStream([audioTrack])
-            tmpStream.audio = new webAudio(tmpStream.audio)
-
-            audioTrack = tmpStream.audio.outputStream.getAudioTracks()[0]
-
+            tmpStream.audioStream = new MediaStream([audioTrack])
+            // tmpStream.audio = new WebAudio(tmpStream.audio)
+            new WebAudio().then((obj) => {
+                tmpStream.audio = obj
+                tmpStream.audio.updateStream(tmpStream.audioStream)
+                audioTrack = tmpStream.audio.streamDestination.stream.getAudioTracks()[0]
+            })
+            
             // if (oldAoTrack) {
             //     oldAoTrack !== audioTrack && tmpStream.stream.removeTrack(oldAoTrack) && tmpStream.stream.addTrack(audioTrack)
             // } else {
@@ -473,10 +476,13 @@ var rtc = {
                 tmpStream.audio.destroy()
                 tmpStream.audio = null
             }
-            tmpStream.audio = new MediaStream([audioTrack])
-            tmpStream.audio = new webAudio(tmpStream.audio)
-
-            audioTrack = tmpStream.audio.outputStream.getAudioTracks()[0]
+            tmpStream.audioStream = new MediaStream([audioTrack])
+            // tmpStream.audio = new WebAudio(tmpStream.audio)
+            new WebAudio().then((obj) => {
+                tmpStream.audio = obj
+            })
+            tmpStream.audio.updateStream(tmpStream.audioStream)
+            audioTrack = tmpStream.audio.streamDestination.stream.getAudioTracks()[0]
 
             // if (oldAoTrack) {
             //     oldAoTrack !== audioTrack && tmpStream.stream.removeTrack(oldAoTrack) && tmpStream.stream.addTrack(audioTrack)

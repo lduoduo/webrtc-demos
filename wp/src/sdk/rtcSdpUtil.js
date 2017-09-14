@@ -14,6 +14,25 @@
 'use strict';
 
 module.exports = {
+    /**
+   * get random ssrc value
+   * 目前没有用到
+   */
+    randomSSRC() {
+        let ram = Math.floor(Math.random() * 100000000) + 10000000
+        return ram > 100000000 ? 99999999 : ram
+    },
+    randomCname() {
+        let tmp = 'ABCDEFGHIGKLMNOPQRSTUVWXYZ'
+        let ram = Math.floor(Math.random() * 100000000) + 10000000
+        ram = ram > 100000000 ? 99999999 + '' : ram + ''
+
+        var map = Array.prototype.map
+        ram = Array.prototype.map.call(ram, (x) => {
+            return tmp[x] + x + tmp[+x + 5]
+        })
+        return ram.join('')
+    },
     mergeConstraints(cons1, cons2) {
         if (!cons1 || !cons2) {
             return cons1 || cons2;

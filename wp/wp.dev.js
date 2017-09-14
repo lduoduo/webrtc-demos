@@ -59,9 +59,9 @@ var config = {
         rules: [
             {
                 test: /\.js$/,
+                exclude: /(node_modules|bower_components|.+bk.+)/,
                 use: [{
-                    loader: 'babel-loader',
-                    options: { presets: ['es2015'] }
+                    loader: 'babel-loader?cacheDirectory=true',
                 }]
             },
             {

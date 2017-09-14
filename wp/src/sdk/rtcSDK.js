@@ -276,7 +276,6 @@ rtcSDK.prototype = {
         //     });
         // }
 
-        console.log(`${this.getDate()} setup peerconnection`)
         logger.info(`${this.getDate()} setup peerconnection`);
         /** 初始化成功的标志位 */
         this.inited = true;
@@ -416,7 +415,7 @@ rtcSDK.prototype = {
         let config = {
             offerToReceiveAudio: 1,
             offerToReceiveVideo: 1,
-            voiceActivityDetection: false
+            // voiceActivityDetection: false,
             // iceRestart: true
         };
         logger.warn('\r\n-------------------------ldodo: activity start----------------------------\r\n')
@@ -436,7 +435,7 @@ rtcSDK.prototype = {
                 });
             }
 
-            // _offer = this.formatLocalDescription('local', _offer)
+            _offer = this.formatLocalDescription('local', _offer)
 
             return this.setLocalDescription('offer', _offer).then(() => {
                 // console.log(`${this.getDate()} setLocalDescription offer:`, rtcConnection.localDescription)
@@ -543,6 +542,7 @@ rtcSDK.prototype = {
         stream = stream[0] || new MediaStream()
         let audio = stream.getAudioTracks()[0]
         let video = stream.getVideoTracks()[0]
+        let cname = ''
 
         sdp_data_parse.media.forEach((media, index) => {
 
@@ -550,6 +550,10 @@ rtcSDK.prototype = {
             // offer对ssrc做限制，如果没有视频或者音频，删除ssrc属性(firefox无论有无都有ssrc)
             if (media.type === 'audio') {
                 !audio && delete media.ssrcs && delete media.ssrcGroups && delete media.msid
+                let tmp = media.ssrcs && media.ssrcs.filter((item)=>{
+                    return item.attribute === 'cname'
+                })
+                cname = tmp && tmp[0].value
             }
             if (media.type === 'video') {
                 !video && delete media.ssrcs && delete media.ssrcGroups && delete media.msid
@@ -587,6 +591,45 @@ rtcSDK.prototype = {
                     }
 
                 }
+            }
+
+            // 针对offer的协议做修改, 根据实际流情况添加ssrc
+            if(type === 'offer' && media.type === "video"){
+                if(!video || media.ssrcs) return
+                media.direction = 'sendrecv'
+                // 添加ssrc
+                media.ssrcs = []
+                let ssrcid = sdpUtil.randomSSRC()
+                
+                media.ssrcs.push({
+                    attribute:'cname',
+                    id:ssrcid,
+                    value: cname
+                })
+
+                media.ssrcs.push({
+                    attribute:'msid',
+                    id:ssrcid,
+                    value: stream.id + ' ' + video.id
+                })
+
+                media.ssrcs.push({
+                    attribute:'mslabel',
+                    id:ssrcid,
+                    value: stream.id
+                })
+
+                media.ssrcs.push({
+                    attribute:'label',
+                    id:ssrcid,
+                    value:video.id
+                })
+                
+                // media.ssrcGroups = []
+                // media.ssrcGroups.push({
+                //     semantics: 'FID',
+                //     ssrcs: ssrcid
+                // })
             }
         })
 
@@ -691,6 +734,8 @@ rtcSDK.prototype = {
                 console.log('   > 轨道id:', `${item.kind} --> ${item.id}`)
             })
 
+            window.rtcLocalStream = tmp
+
             if (this.rtcStatus === RTC_STATUS['connected']) {
                 this.createOffer()
             }
@@ -744,6 +789,8 @@ rtcSDK.prototype = {
         tmp && tmp.getTracks().forEach(item => {
             console.log('   > 轨道id:', `${item.kind} -->  ${item.id}`)
         })
+
+        window.rtcLocalStream = tmp
 
         if (this.rtcStatus === RTC_STATUS['connected']) {
             this.createOffer()
@@ -924,6 +971,7 @@ rtcSDK.prototype = {
     onRemoteStream(event) {
 
         let stream = event.stream
+        window.rtcRemoteStream = stream
         if (!stream) return
 
         logger.log(`${this.getDate()} get remote stream`, stream);

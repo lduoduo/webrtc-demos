@@ -24,6 +24,10 @@ module.exports = {
             entry: {}
         };
         glob.sync(url).forEach(function (name) {
+            // 跳过bk备份文件
+            if(/.+\.bk\.(js|css|less|scss|html)$)/.test(name)){
+                return
+            }
             console.log('name----->%s', name);
             /*
             循环所有文件，对文件名做处理，并放入entry数组中，返回entry
@@ -64,6 +68,10 @@ module.exports = {
             entry: {}
         };
         glob.sync(url).forEach(function (name) {
+            // 跳过bk备份文件
+            if(/.+\.bk\.(js|css|less|scss|html)$/.test(name)){
+                return
+            }
             console.log('name----->%s', name);
             /*
             循环所有文件，对文件名做处理，并放入entry数组中，返回entry

@@ -76,7 +76,7 @@ window.StreamOption = {
             }
         }).then((stream) => {
             this.local.audioStream = stream;
-            return this.formatLocalStream()
+            return this.formatLocalStream('audio')
         }).catch(err => {
             console.error(err)
             return Promise.reject(err)
@@ -102,7 +102,7 @@ window.StreamOption = {
             audio: false
         }).then((stream) => {
             this.local.video = stream;
-            return this.formatLocalStream()
+            return this.formatLocalStream('video')
         }).catch(err => {
             console.error(err)
             return Promise.reject(err)
@@ -158,7 +158,7 @@ window.StreamOption = {
 
         return navigator.mediaDevices.getUserMedia(constraint).then((stream) => {
             this.local.video = stream;
-            return this.formatLocalStream()
+            return this.formatLocalStream('video')
         }).catch(err => {
             console.error(err)
             return Promise.reject(err)
@@ -173,7 +173,7 @@ window.StreamOption = {
         return Promise.resolve({})
     },
     // 格式化本地流, 音频轨道一直在, 不作更改
-    formatLocalStream() {
+    formatLocalStream(type = 'video') {
 
         let audio = this.local.audioStream && this.local.audioStream.getAudioTracks()
         let video = this.local.video && this.local.video.getVideoTracks()
@@ -182,23 +182,24 @@ window.StreamOption = {
             return Promise.reject('none tracks available')
         }
 
-        if (!audio) {
+        if(type === 'video' && video){
             return Promise.resolve({ video: this.local.video })
         }
 
-        if (this.webAudio) {
-            this.webAudio.updateStream({ type: 'voice', stream: this.local.audioStream })
-            return Promise.resolve({ audio: this.local.audio, video: this.local.video })
+        if(type === 'audio'){
+            audio && this.webAudio && this.webAudio.updateStream({ type: 'voice', stream: this.local.audioStream })
+            return Promise.resolve({ audio: this.local.audio})
         }
-
     },
     // 播放声音
     startAudio() {
-        this.webAudio.play()
+        // this.webAudio.play()
+        this.webAudio.speakerOn()
     },
     // 停止播放声音
     stopAudio() {
-        this.webAudio.pause()
+        // this.webAudio.pause()
+        this.webAudio.speakerOff()
     },
     // 改变音量
     changeVolumn(volume) {
