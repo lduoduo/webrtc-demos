@@ -96,6 +96,12 @@
 + 本地录屏功能
 + ui完善
 + 多人尝试
++ 兼容safari
+
+## safari 11 不支持的API
+1. promise
+2. video.srcObject
+3. 
 
 ## references
 + [google ppt](http://io13webrtc.appspot.com/#1)

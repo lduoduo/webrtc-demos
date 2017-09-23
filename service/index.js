@@ -14,5 +14,6 @@ module.exports = {
     message: require('./p_message'),
     chat: require('./p_chat'),
     ktv: require('./p_ktv'),
-    whiteboard: require('./p_whiteboard')
+    whiteboard: require('./p_whiteboard'),
+    video: require('./p_video')
 }

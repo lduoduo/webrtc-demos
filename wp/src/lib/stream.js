@@ -91,7 +91,7 @@ window.StreamOption = {
         this.isVideoEnable = true
 
         if (!deviceId) deviceId = this.devices.video[this.deviceIndex].deviceId
-        return navigator.mediaDevices.getUserMedia({
+        let constrant = {
             video: {
                 deviceId: deviceId,
                 width: { min: 640, ideal: 1080, max: 1920 },
@@ -100,7 +100,18 @@ window.StreamOption = {
                 frameRate: { max: 30 }
             },
             audio: false
-        }).then((stream) => {
+        }
+
+        // safari
+        if(/Safari/gi.test(platform.name)){
+            constrant = {
+                video: true,
+                audio: false
+            }
+        }
+
+        console.log('constrant', constrant)
+        return navigator.mediaDevices.getUserMedia(constrant).then((stream) => {
             this.local.video = stream;
             return this.formatLocalStream('video')
         }).catch(err => {
@@ -182,13 +193,13 @@ window.StreamOption = {
             return Promise.reject('none tracks available')
         }
 
-        if(type === 'video' && video){
+        if (type === 'video' && video) {
             return Promise.resolve({ video: this.local.video })
         }
 
-        if(type === 'audio'){
+        if (type === 'audio') {
             audio && this.webAudio && this.webAudio.updateStream({ type: 'voice', stream: this.local.audioStream })
-            return Promise.resolve({ audio: this.local.audio})
+            return Promise.resolve({ audio: this.local.audio })
         }
     },
     // 播放声音
@@ -215,3 +226,5 @@ window.StreamOption = {
         this.webAudio.audioEffect({ type: 'Convolver', name })
     }
 }
+
+// export default StreamOption;

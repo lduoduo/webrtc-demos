@@ -55,10 +55,10 @@ window.onerror = function (errorMessage, source, lineno, colno, error) {
     // });
     console.error(JSON.stringify(info));
     // ajax.post('/data/updateLog', ERROR);
-    Mt.alert({
-        msg: JSON.stringify(info),
-        confirmBtnMsg: '好哒'
-    })
+    // Mt.alert({
+    //     msg: JSON.stringify(info),
+    //     confirmBtnMsg: '好哒'
+    // })
 }
 // var a = b+1;
 window.bigpipe = function (id, content) {

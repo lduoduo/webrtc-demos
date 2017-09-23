@@ -22,6 +22,7 @@ exports.start = function () {
         route.get(rootPath + '/message', service.message.index),
         route.get(rootPath + '/chat', service.chat.index),
         route.get(rootPath + '/ktv', service.ktv.index),
-        route.get(rootPath + '/whiteboard', service.whiteboard.index)
+        route.get(rootPath + '/whiteboard', service.whiteboard.index),
+        route.get(rootPath + '/video', service.video.index)
     ]);
 }

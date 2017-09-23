@@ -1,0 +1,23 @@
+<% include ../layout/header.html %>
+
+<div class="rtc-main">
+
+    <h2 class="rtc-title">音视频:Safari支持啦!<br></h2>
+    <div class="rtc-btn-box ">
+        <input class="input rtc-channelName J-channelName" type="text" placeholder="请输入数字房间号，相同房间可进行通信哦">
+        <a class="btn btn-white J-toggleRTC">加入房间</a>
+        <p class="btn-option">
+            <a class="btn btn-small J-showBroswer">查看浏览器信息</a>
+            <a class="btn btn-small J-toggleMedia">开启音视频</a>
+        </p>
+    </div>
+    <div class="rtc-media ">
+        <div class="rtc-video">
+            <video class="video local J-local-video" controls=true></video>
+            <video class="video remote J-remote-video" controls=true></video>
+        </div>
+    </div>
+</div>
+
+<% include ../layout/snip.html %>
+<% include ../layout/footer.html %>

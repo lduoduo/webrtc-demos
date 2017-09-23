@@ -47,7 +47,7 @@ function init (done) {
 
   global.console.log = function(){
       // arguments 记录
-      log.call(this, arguments)
+      log.apply(this, [...arguments])
       let args = [...arguments];
       args.map((item) => {
         logs(item)

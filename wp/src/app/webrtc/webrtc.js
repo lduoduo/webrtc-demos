@@ -159,7 +159,7 @@ var rtc = {
         //video source change
         $('body').on('click', '.J-additional-inputs .item', function(e) {
             constraints.video.optional = [{ sourceId: $(e.target).data('id') }];
-            that.initMedia();
+            // that.initMedia();
         });
 
         //send msg button click

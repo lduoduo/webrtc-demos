@@ -23,8 +23,9 @@ window.lazyLoad = function (url) {
     let dom
     // 加载css
     if (/\.css$/.test(url)) {
-        dom = document.createElement('style')
-        dom.href = url
+        dom = document.createElement('link');
+        dom.rel = 'stylesheet';
+        dom.href = url;
     }
     if (/\.js$/.test(url)) {
         dom = document.createElement('script')

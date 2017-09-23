@@ -667,7 +667,13 @@ window.home = {
     startRemoteStream(stream) {
         // console.log('remote stream:', stream);
         window.myRemoteStream = stream
-        $remoteVideo.srcObject = stream;
+        // 兼容
+        if ($remoteVideo.srcObject === undefined) {
+            let url = URL.createObjectURL(stream)
+            $remoteVideo.src = url
+        } else {
+            $remoteVideo.srcObject = stream;
+        }
         $remoteVideo.play();
 
         stream.onaddtrack = e => {

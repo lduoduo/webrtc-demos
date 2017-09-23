@@ -214,7 +214,6 @@ rtcSDK.prototype = {
         let stream = this.stream
         if (stream) {
             stream.getTracks().forEach(function (track) {
-                track.stop()
                 stream.removeTrack(track)
             })
         }
@@ -300,7 +299,8 @@ rtcSDK.prototype = {
         if (this.isReSetup) return
         this.emit('ready', { status: true, url: wss })
 
-        this.initStats()
+        // 暂时屏蔽
+        // this.initStats()
     },
     // 初始化注册peer系列监听事件
     initPeerEvent() {
@@ -308,8 +308,8 @@ rtcSDK.prototype = {
 
         // 远端流附加了轨道
         rtcConnection.ontrack = function (event) {
-            let stream = event.streams[0]
-            logger.log(`${that.getDate()} on remote track`, stream);
+            let track = event.track
+            logger.log(`${that.getDate()} on remote track`, track);
         };
 
         /** 远端流过来了, 新建video标签显示 */
@@ -373,11 +373,11 @@ rtcSDK.prototype = {
                 logger.log(`${that.getDate()} rtc connect success`)
                 that.rtcStatus = RTC_STATUS['connected']
                 that.emit('connected')
-                that.rtcStats.start()
+                // that.rtcStats.start()
             }
             if(state === 'closed'){
                 logger.error(`${that.getDate()} rtc connect fail`)
-                that.rtcStats.stop()
+                // that.rtcStats.stop()
             }
             if (that.dataChannel) {
                 logger.info(`${that.getDate()} data channel state: ${that.dataChannel.readyState}`);
@@ -388,7 +388,7 @@ rtcSDK.prototype = {
     initStats() {
         this.rtcStats = new RtcStats({ peer: this.rtcConnection, interval: 10000 })
         this.rtcStats.on('stats', function (result) {
-            console.log(result)
+            // console.log(result)
         })
     },
     // stats数据展示
@@ -422,8 +422,8 @@ rtcSDK.prototype = {
         return rtcConnection.createOffer(config).then((_offer) => {
 
             this.localOffer = _offer
-            // 协议更改，统一vp9编解码格式
-            _offer.sdp = sdpUtil.maybePreferVideoReceiveCodec(_offer.sdp, { videoRecvCodec: 'VP9' });
+            // 协议更改，统一H264编解码格式
+            _offer.sdp = sdpUtil.maybePreferVideoReceiveCodec(_offer.sdp, { videoRecvCodec: 'H264' });
 
             // 测试打印sdp!后期删除1
             if (this.debug) {
@@ -466,8 +466,8 @@ rtcSDK.prototype = {
 
             logger.info(`${that.getDate()} create answer:`, _answer)
 
-            // 协议更改，统一vp9编解码格式
-            _answer.sdp = sdpUtil.maybePreferVideoReceiveCodec(_answer.sdp, { videoRecvCodec: 'VP9' });
+            // 协议更改，统一H264编解码格式
+            _answer.sdp = sdpUtil.maybePreferVideoReceiveCodec(_answer.sdp, { videoRecvCodec: 'H264' });
             // 改动请见：https://stackoverflow.com/questions/34095194/web-rtc-renegotiation-errors
             _answer.sdp = _answer.sdp.replace(/a=setup:active/gi, function (item) {
                 return 'a=setup:passive'
@@ -672,8 +672,8 @@ rtcSDK.prototype = {
 
         logger.log(`${this.getDate()} on remote offer`, offer);
 
-        // 协议更改，统一vp9编解码格式
-        offer.sdp = sdpUtil.maybePreferVideoSendCodec(offer.sdp, { videoRecvCodec: 'VP9' });
+        // 协议更改，统一H264编解码格式
+        offer.sdp = sdpUtil.maybePreferVideoSendCodec(offer.sdp, { videoRecvCodec: 'H264' });
 
         this.setRemoteDescription('offer', offer).then(() => {
             return this.createAnswer()
@@ -685,8 +685,8 @@ rtcSDK.prototype = {
     onAnswer(answer) {
         logger.info(`${this.getDate()} on remote answer`, answer)
 
-        // 协议更改，统一vp9编解码格式
-        answer.sdp = sdpUtil.maybePreferVideoSendCodec(answer.sdp, { videoRecvCodec: 'VP9' });
+        // 协议更改，统一H264编解码格式
+        answer.sdp = sdpUtil.maybePreferVideoSendCodec(answer.sdp, { videoRecvCodec: 'H264' });
 
         this.formatLocalDescription('remote', answer)
         // if (!answer) return
@@ -975,6 +975,11 @@ rtcSDK.prototype = {
         if (!stream) return
 
         logger.log(`${this.getDate()} get remote stream`, stream);
+
+        stream && stream.getTracks().forEach(item => {
+            console.log('   > 轨道id:', `${item.kind} -->  ${item.id}`)
+        })
+
         this.emit('stream', stream)
 
         stream.onaddtrack = e => {

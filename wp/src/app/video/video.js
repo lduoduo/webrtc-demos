@@ -5,8 +5,8 @@
  */
 
 // 引入样式文件
-import './chat.scss';
-// import StreamOption from 'lib/stream'
+import './video.scss';
+// import StreamOptions from 'lib/stream'
 
 // 音视频画面容器
 let $localVideo = document.querySelector('.J-local-video');
@@ -41,7 +41,6 @@ window.home = {
     isDebugEnable: $('.J-tip-check').hasClass('active'),
     init() {
         this.initEvent();
-        this.lazy()
 
         if (/Firefox/.test(platform.name)) $('.J-toggleScreenShare').toggleClass('hide', false)
     },
@@ -53,8 +52,8 @@ window.home = {
                 return this.initWebAudio()
             })
         }).then(() => {
-            StreamOption.init(this.webAudio);
-            StreamOption.stopAudio()
+            StreamOptions.init(this.webAudio);
+            StreamOptions.stopAudio()
         }).catch(err => {
             console.error(err)
             alert(JSON.stringify(err))
@@ -67,20 +66,8 @@ window.home = {
     initEvent() {
         let that = this
         $('body').on('click', '.J-toggleRTC', this.toggleRTC.bind(this))
-        $('body').on('click', '.J-toggleMic', this.toggleMic.bind(this))
-        $('body').on('click', '.J-toggleCam', this.toggleCam.bind(this))
-        $('body').on('click', '.J-toggleScreenShare', this.toggleScreenShare.bind(this))
-        $('body').on('click', '.J-toggleAudio', this.toggleAudio.bind(this))
-        $('body').on('click', '.J-switchCamera', this.switchCamera.bind(this))
-        $('body').on('click', '.J-remote-video', function () {
-            let local = $localVideo.srcObject
-            let remote = $remoteVideo.srcObject
-            $localVideo.srcObject = remote
-            $remoteVideo.srcObject = local
-        })
-        $('body').on('click', '.J-local-video', function () {
-            $('.rtc-video').toggleClass('full-screen')
-        })
+        $('body').on('click', '.J-toggleMedia', this.toggleMedia.bind(this))
+
         $('body').on('click', '.J-tip-check', this.toggleDebugStatus.bind(this))
         $('body').on('click', '.J-toggleCanvas', this.toggleCanvas.bind(this))
         $('body').on('click', '.J-showBroswer', this.showBroswer.bind(this))
@@ -122,55 +109,16 @@ window.home = {
             confirmBtnMsg: '好哒'
         })
     },
-    // 开关本地音频
-    toggleAudio(e) {
-        let dom = $('.J-toggleAudio')
-        dom.toggleClass('active')
-        if (dom.hasClass('active')) {
-            StreamOption.startAudio()
-            dom.html('关闭本地音频(默认不开)')
-        } else {
-            StreamOption.stopAudio()
-            dom.html('播放本地音频(默认不开)')
-        }
-    },
-    // 开关麦克风
-    toggleMic(e) {
+    // 开关音视频
+    toggleMedia(e) {
         let dom = $(e.target)
         dom.toggleClass('active')
         if (dom.hasClass('active')) {
-            StreamOption.startDeviceAudio().then((obj) => {                
-                dom.html('关闭麦克风')
-                $('.J-toggleAudio').toggleClass('hide', false)
-            }).catch(err => {
-                console.error(err)
-                let error = err.constructor === String ? err : typeof err === 'object' ? err.stack || err.message : JSON.stringify(err)
-                Mt.alert({
-                    title: 'error',
-                    msg: error,
-                    confirmBtnMsg: '好哒'
-                })
-                $('.J-toggleAudio').toggleClass('hide', true)
-                StreamOption.stopDeviceAudio()
-            })
-
-        } else {
-            StreamOption.stopDeviceAudio()
-            dom.html('开启麦克风')
-            $('.J-toggleAudio').toggleClass('hide', true)
-        }
-    },
-    // 开关摄像头
-    toggleCam(e) {
-        let dom = $(e.target)
-        dom.toggleClass('active')
-        if (dom.hasClass('active')) {
-            StreamOption.startDeviceVideo().then((obj) => {
-                if (obj.video) this.local.video = obj.video
+            StreamOptions.startDevice().then((stream) => {
+                this.local.stream = stream
                 this.startLocalVideoStream()
                 this.updateRtcStream()
-                dom.html('关闭摄像头')
-                $('.J-switchCamera').toggleClass('hide', StreamOption.devices.video.length <= 1)
+                dom.html('关闭音视频')
             }).catch(err => {
                 console.error(err)
                 let error = err.constructor === String ? err : typeof err === 'object' ? err.stack || err.message : JSON.stringify(err)
@@ -181,41 +129,17 @@ window.home = {
                 })
                 $('.J-switchCamera').toggleClass('hide', true)
                 this.stopLocalVideoStream()
-                StreamOption.stopDeviceVideo()
+                StreamOptions.stopDevice()
             })
 
         } else {
             this.stopLocalVideoStream()
-            StreamOption.stopDeviceVideo()
+            StreamOptions.stopDevice()
             this.local.video = new MediaStream()
             this.updateRtcStream()
-            dom.html('开启摄像头')
+            dom.html('开启音视频')
             $('.J-switchCamera').toggleClass('hide', true)
         }
-    },
-    // 开关桌面共享
-    toggleScreenShare(e) {
-        if (!/Firefox/.test(platform.name)) return
-        let dom = $(e.target)
-        dom.toggleClass('active')
-        let fn = dom.hasClass('active') ? 'startScreenShare' : 'stopScreenShare'
-
-        stream[fn]('screen').then((obj) => {
-            if (obj.video) this.local.video = obj.video
-            if (obj.audio) this.local.audio = obj.audio
-            this.startLocalVideoStream()
-            this.updateRtcStream()
-            dom.html(fn === 'startScreenShare' ? '关闭桌面共享' : '开启桌面共享')
-        }).catch(err => {
-            console.error(err)
-            let error = err.constructor === String ? err : typeof err === 'object' ? err.stack || err.message : JSON.stringify(err)
-            Mt.alert({
-                title: 'error',
-                msg: error,
-                confirmBtnMsg: '好哒'
-            })
-            dom.html(fn === 'startScreenShare' ? '开启桌面共享' : '关闭桌面共享')
-        })
     },
     // 开关debug模式
     toggleDebugStatus() {
@@ -224,7 +148,7 @@ window.home = {
     },
     // 切换前后摄像头
     switchCamera() {
-        StreamOption.switchCamera().then((obj) => {
+        StreamOptions.switchCamera().then((obj) => {
             if (obj.video) this.local.video = obj.video
             if (obj.audio) this.local.audio = obj.audio
             this.startLocalVideoStream()
@@ -245,10 +169,10 @@ window.home = {
         $localVideo.autoplay = true;
         // 兼容
         if ($localVideo.srcObject === undefined) {
-            let url = URL.createObjectURL(this.local.video)
+            let url = URL.createObjectURL(this.local.stream)
             $localVideo.src = url
         } else {
-            $localVideo.srcObject = this.local.video;
+            $localVideo.srcObject = this.local.stream;
         }
     },
     // 停止本地视频流外显
@@ -275,7 +199,7 @@ window.home = {
     updateRtcStream() {
         if (!this.rtc || !this.rtc.inited) return
 
-        this.updateLocalStream();
+        // this.updateLocalStream();
 
         window.myLocalStream = this.local.stream;
 
@@ -411,7 +335,7 @@ window.home = {
             return
         }
 
-        this.updateLocalStream()
+        // this.updateLocalStream()
         let stream = this.local.stream
 
         let url = `wss://${serverWs}/rtcWs`;
@@ -458,7 +382,13 @@ window.home = {
     startRemoteStream(stream) {
         window.myRemoteStream = stream
         // console.log('remote stream:', stream);
-        $remoteVideo.srcObject = stream;
+        // 兼容
+        if ($remoteVideo.srcObject === undefined) {
+            let url = URL.createObjectURL(stream)
+            $remoteVideo.src = url
+        } else {
+            $remoteVideo.srcObject = stream;
+        }
         $remoteVideo.play();
 
         stream.onaddtrack = e => {
@@ -473,7 +403,8 @@ window.home = {
         Mt.alert({
             title: 'webrtc服务器连接失败',
             msg: '服务连接已断开，请稍后重新加入房间',
-            confirmBtnMsg: '好哒'
+            confirmBtnMsg: '好哒',
+            timer: 2000,
         });
         console.log('rtc 服务连接已断开，请稍后重新加入房间')
     },
@@ -481,233 +412,39 @@ window.home = {
     rtcLeave(uid) {
         Mt.alert({
             title: '对方已断开连接',
-            confirmBtnMsg: '好哒'
+            confirmBtnMsg: '好哒',
+            timer: 2000,
         });
         console.log(`远程用户已断开: `, uid)
     }
 }
 
+let StreamOptions = {
+    stream: null,
+    startDevice() {
+        // safari
+        let constrant = {
+            video: true,
+            audio: true
+        }
 
-// let StreamOption = {
-//     browser: platform.name,
-//     isVideoEnable: false, //是否开启摄像头
-//     // 当前在使用摄像头的位置, 默认第一个
-//     deviceIndex: 0,
-//     // 本地摄像头个数
-//     devices: [],
-//     local: {
-//         // webAudio
-//         webAudio: null,
-//         video: null,
-//         // webAudio处理后的音频流
-//         audio: null,
-//         // 原生音频流
-//         audioStream: null
-//     },
-//     init() {
-//         this.getDevices()
-//     },
-//     /**
-//      * 获取设备列表
-//      * 
-//      * @returns obj 设备列表对象
-//      */
-//     getDevices() {
-//         // 文档见: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices
-//         if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-//             // console.log("your browser not support this feature");
-//             return Promise.reject("your browser not support this feature, see https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices");
-//         }
-
-//         return navigator.mediaDevices.enumerateDevices().then((devices) => {
-//             let result = {
-//                 video: [],
-//                 audio: []
-//             };
-//             devices.forEach((device, index) => {
-//                 if (device.kind === "videoinput") {
-//                     result.video.push({
-//                         deviceId: device.deviceId,
-//                         label: device.label ? device.label : "camera " + (result.video.length + 1)
-//                     });
-//                 } else if (device.kind === "audioinput") {
-//                     result.audio.push({
-//                         deviceId: device.deviceId,
-//                         label: device.label
-//                     });
-//                 }
-//             });
-//             this.devices = result;
-//             console.log(result);
-//             return Promise.resolve(result);
-//         })
-//     },
-//     // 开启麦克风
-//     startDeviceAudio(deviceId) {
-//         if (!deviceId) deviceId = this.devices.audio[0].deviceId
-
-//         return navigator.mediaDevices.getUserMedia({
-//             audio: {
-//                 deviceId: deviceId
-//             }
-//         }).then((stream) => {
-//             this.local.audioStream = stream;
-//             return this.formatLocalStream()
-//         }).catch(err => {
-//             console.error(err)
-//             return Promise.reject(err)
-//         });
-//     },
-//     // 开启摄像头
-//     startDeviceVideo(deviceId) {
-//         this.isVideoEnable = true
-
-//         if (!deviceId) deviceId = this.devices.video[this.deviceIndex].deviceId
-//         return navigator.mediaDevices.getUserMedia({
-//             video: {
-//                 deviceId: deviceId,
-//                 width: { min: 640, ideal: 1080, max: 1920 },
-//                 height: { min: 480, ideal: 720, max: 1080 },
-//                 // frameRate: { min: 10, ideal: 15, max: 25 },
-//                 frameRate: { max: 30 }
-//             },
-//             audio: false
-//         }).then((stream) => {
-//             this.local.video = stream;
-//             return this.formatLocalStream()
-//         }).catch(err => {
-//             console.error(err)
-//             return Promise.reject(err)
-//         });
-//     },
-//     // 关闭音视频
-//     stopDevice() {
-//         let stream = this.local.stream
-//         stream.getTracks().forEach(track => {
-//             track.stop()
-//             stream.removeTrack(track)
-//         })
-//         dropMS(this.local.stream)
-//         dropMS(this.local.video)
-//         this.local.audio && this.local.audio.destroy()
-
-//         function dropMS(mms) {
-//             if (!mms) return
-//             let tracks = mms.getTracks()
-//             if (!tracks || tracks.length === 0) return
-
-//             mms.getTracks().forEach(function (track) {
-//                 track.stop()
-//                 mms.removeTrack(track)
-//             })
-//         }
-//         this.local.stream = null
-//         this.local.video = null
-//         this.local.audio = null
-
-//         this.updateStream()
-
-//         // 隐藏按钮
-//         $('.J-enableAudio').toggleClass('hide', true)
-//         $('.J-switchCamera').toggleClass('hide', true)
-//         $('.J-enableAudio').html('播放本地音频(默认不开)')
-
-//         return Promise.resolve()
-//     },
-//     // 关闭麦克风
-//     stopDeviceAudio() {
-//         let stream = this.local.audioStream
-//         stream && stream.getTracks().forEach(track => {
-//             track.stop()
-//             stream.removeTrack(track)
-//         })
-//     },
-//     /**
-//      * 关闭摄像头
-//      * 
-//      * @param {any} isMannual 是否是手动关闭，默认是true: 手动
-//      */
-//     stopDeviceVideo(isMannual = true) {
-//         if (isMannual) this.isVideoEnable = false
-//         let stream = this.local.video
-//         stream && stream.getTracks().forEach(track => {
-//             track.stop()
-//             stream.removeTrack(track)
-//         })
-//     },
-//     // 切换摄像头
-//     switchCamera() {
-//         if (!this.devices.video || this.devices.video.length <= 1) return
-//         this.deviceIndex++;
-//         if (this.deviceIndex > this.devices.video.length - 1) {
-//             this.deviceIndex = 0;
-//         }
-//         let deviceId = this.devices.video[this.deviceIndex].deviceId
-
-//         this.stopDeviceVideo()
-//         return this.startDeviceVideo(deviceId)
-//     },
-//     // 开启桌面共享
-//     startScreenShare(type) {
-//         if (!/Firefox/.test(this.browser)) return
-//         if (this.local.video) {
-//             this.stopDeviceVideo(false)
-//         }
-
-//         let constraint = {
-//             audio: false,
-//             video: {
-//                 mediaSource: type
-//             }
-//         }
-
-//         return navigator.mediaDevices.getUserMedia(constraint).then((stream) => {
-//             this.local.video = stream;
-//             return this.formatLocalStream()
-//         }).catch(err => {
-//             console.error(err)
-//             return Promise.reject(err)
-//         });
-//     },
-//     // 关闭桌面共享
-//     stopScreenShare() {
-//         this.stopDeviceVideo(false)
-//         if (this.isVideoEnable) {
-//             return this.startDeviceVideo()
-//         }
-//         return Promise.resolve({})
-//     },
-//     // 格式化本地流
-//     formatLocalStream() {
-//         let audio = this.local.audioStream && this.local.audioStream.getAudioTracks()
-//         let video = this.local.video && this.local.video.getVideoTracks()
-
-//         if (!audio && !video) {
-//             return Promise.reject('none tracks available')
-//         }
-
-//         if (!audio) {
-//             return Promise.resolve({ video: this.local.video })
-//         }
-
-//         // 格式化音频
-//         return new webAudio(this.local.audioStream).then((obj) => {
-//             this.local.webAudio = obj
-//             this.local.audio = obj.outputStream
-//             return Promise.resolve({ audio: this.local.audio, video: this.local.video })
-
-//         })
-//     },
-//     // 播放声音
-//     startAudio() {
-//         this.local.webAudio.play()
-//     },
-//     // 停止播放声音
-//     stopAudio() {
-//         this.local.webAudio.pause()
-//     }
-
-// }
+        console.log('constrant', constrant)
+        return navigator.mediaDevices.getUserMedia(constrant).then((stream) => {
+            this.stream = stream
+            return stream
+        }).catch(err => {
+            console.error(err)
+            return Promise.reject(err)
+        });
+    },
+    stopDevice() {
+        let stream = this.stream
+        stream && stream.getTracks().forEach(track => {
+            track.stop()
+            stream.removeTrack(track)
+        })
+    },
+}
 
 
 home.init();
